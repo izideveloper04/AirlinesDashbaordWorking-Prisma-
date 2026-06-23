@@ -1,0 +1,168 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("editor")
+  avatar    String   @default("")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pages     Page[]     @relation("PageCreatedBy")
+  posts     Post[]     @relation("PostCreatedBy")
+  revisions Revision[]
+  media     Media[]
+  pageLocks PageLock[]
+  postLocks PostLock[]
+}
+
+model Page {
+  id                 Int      @id @default(autoincrement())
+  title              String
+  slug               String
+  fullPath           String   @unique
+  content            String   @default("")
+  status             String   @default("draft")
+  template           String   @default("default")
+  templateFile       String   @default("")
+  menuOrder          Int      @default(0)
+  parentId           Int?
+  parentSlug         String   @default("")
+  parentFullPath     String   @default("")
+  featuredImage      String   @default("")
+  featuredImageLocal String   @default("")
+  metaTitle          String   @default("")
+  metaDescription    String   @default("")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdById        Int?
+
+  createdBy  User?          @relation("PageCreatedBy", fields: [createdById], references: [id])
+  revisions  Revision[]
+  categories PageCategory[]
+  lock       PageLock?
+}
+
+model Post {
+  id              Int      @id @default(autoincrement())
+  title           String
+  slug            String   @unique
+  content         String   @default("")
+  excerpt         String   @default("")
+  status          String   @default("draft")
+  featuredImage   String   @default("")
+  metaTitle       String   @default("")
+  metaDescription String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdById     Int?
+
+  createdBy  User?          @relation("PostCreatedBy", fields: [createdById], references: [id])
+  categories PostCategory[]
+  tags       PostTag[]
+  lock       PostLock?
+}
+
+model Revision {
+  id          Int      @id @default(autoincrement())
+  pageId      Int?
+  title       String
+  content     String
+  changedAt   DateTime @default(now())
+  changedById Int?
+
+  page      Page? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  changedBy User? @relation(fields: [changedById], references: [id])
+}
+
+model Media {
+  id           Int      @id @default(autoincrement())
+  filename     String
+  originalName String
+  url          String
+  size         Int      @default(0)
+  mimeType     String   @default("")
+  uploadedById Int?
+  createdAt    DateTime @default(now())
+
+  uploadedBy User? @relation(fields: [uploadedById], references: [id])
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String
+  slug  String @unique
+
+  pages PageCategory[]
+  posts PostCategory[]
+}
+
+model PageCategory {
+  pageId     Int
+  categoryId Int
+
+  page     Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([pageId, categoryId])
+}
+
+model PostCategory {
+  postId     Int
+  categoryId Int
+
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([postId, categoryId])
+}
+
+model Tag {
+  id    Int       @id @default(autoincrement())
+  name  String
+  slug  String    @unique
+  posts PostTag[]
+}
+
+model PostTag {
+  postId Int
+  tagId  Int
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+model PageLock {
+  id        Int      @id @default(autoincrement())
+  pageId    Int      @unique
+  userId    Int
+  lockedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+}
+
+model PostLock {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @unique
+  userId    Int
+  lockedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+}
