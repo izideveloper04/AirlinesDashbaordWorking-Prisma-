@@ -48,10 +48,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PageRoute({ params }: Props) {
-  const { slug } = await params;
-  const page = await getPageByPath(slug);
+    const { slug } = await params;
+    const page = await getPageByPath(slug);
 
-  if (!page) notFound();
+    // Not found or not published → 404 for public visitors
+    if (!page || page.status !== 'published') notFound();
 
   // ── Special template files get their own components ──
   if (page.templateFile === 'page-templates/all.php') {

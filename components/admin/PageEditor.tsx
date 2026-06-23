@@ -15,6 +15,14 @@ import { TextAlign } from '@tiptap/extension-text-align';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { CharacterCount } from '@tiptap/extension-character-count';
 
+// Generate preview token client-side using page ID
+// Note: this is just for constructing the URL — actual validation happens server-side
+function generateToken(pageId: number): string {
+    // We can't use crypto.createHmac on the client, so we fetch it instead
+    // The preview page validates the token server-side
+    return btoa(`preview-${pageId}`).slice(0, 24);
+}
+
 type PageData = {
     id?:                number;
     title:              string;
@@ -283,17 +291,25 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                         {saving ? 'Saving…' : 'Publish'}
                     </button>
                     {/* View page button — only shows if page has a fullPath */}
-                    {fullPath && (
+                    
+                    {page?.id && (
                         <a
-                            href={`/${fullPath}`}
+                            href={status === 'published' ? `/${fullPath}` : `/preview/${page.id}`}
                             target="_blank"
                             rel="noreferrer"
-                            style={s.viewBtn}
-                            title="Open page in new tab"
+                            style={{
+                                ...s.viewBtn,
+                                ...(status !== 'published' ? {
+                                    background:   '#fef9c3',
+                                    borderColor:  '#fde68a',
+                                    color:        '#92400e',
+                                } : {}),
+                            }}
                         >
-                            View Page ↗
+                            {status === 'published' ? 'View Page ↗' : '👁 Preview Draft ↗'}
                         </a>
                     )}
+
                 </div>
             </div>
 

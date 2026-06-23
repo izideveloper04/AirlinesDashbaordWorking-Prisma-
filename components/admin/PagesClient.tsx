@@ -251,12 +251,15 @@ export default function PagesClient({
                                                 Copy
                                             </button>
                                             <a
-                                                href={`/${page.fullPath}`}
+                                                href={page.status === 'published' ? `/${page.fullPath}` : `/preview/${page.id}`}
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                style={s.actionBtn}
+                                                style={{
+                                                    ...s.actionBtn,
+                                                    ...(page.status !== 'published' ? { color: '#d97706' } : {}),
+                                                }}
                                             >
-                                                View
+                                                {page.status === 'published' ? 'View' : '👁 Preview'}
                                             </a>
                                             {page.status !== 'trash' ? (
                                                 <button

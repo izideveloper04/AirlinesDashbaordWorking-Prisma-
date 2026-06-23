@@ -29,9 +29,9 @@ export type WPPage = {
     parentFullPath:     string;
     featuredImage:      string;
     featuredImageLocal: string;
+    featuredImageAlt:   string;
     metaTitle:          string; 
     metaDescription:    string;
-    featuredImageAlt:   string;
 };
 
 // ─────────────────────────────────────────────
