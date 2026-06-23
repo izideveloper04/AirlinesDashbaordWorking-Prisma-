@@ -46,14 +46,11 @@ export default async function ChildTemplate({ page }: Props) {
 
           {page.featuredImageLocal && (
             <div className="child-hero">
-              <Image
-                src={page.featuredImageLocal}
-                alt={page.title}
-                width={900}
-                height={280}
-                priority
-                style={{ width: '100%', height: '280px', objectFit: 'cover' }}
-              />
+                <img
+                    src={page.featuredImageLocal || page.featuredImage}
+                    alt={page.featuredImageAlt || page.title}
+                    style={{ width: '100%', height: '280px', objectFit: 'cover', display: 'block' }}
+                />
             </div>
           )}
 

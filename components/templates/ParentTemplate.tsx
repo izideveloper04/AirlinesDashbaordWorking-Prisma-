@@ -16,14 +16,11 @@ export default async function ParentTemplate({ page }: Props) {
       {/* Hero image or navy banner */}
       {page.featuredImageLocal ? (
         <div className="parent-hero">
-          <Image
-            src={page.featuredImageLocal}
-            alt={page.title}
-            width={1200}
-            height={340}
-            priority
-            style={{ width: '100%', height: '340px', objectFit: 'cover' }}
-          />
+            <img
+                src={page.featuredImageLocal || page.featuredImage}
+                alt={page.featuredImageAlt || page.title}
+                style={{ width: '100%', height: '340px', objectFit: 'cover', display: 'block' }}
+            />
         </div>
       ) : (
         <div className="parent-hero-banner" />

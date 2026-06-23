@@ -16,23 +16,35 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const page = await getPageByPath(slug);
-  if (!page) return {};
+    const { slug } = await params;
+    const page = await getPageByPath(slug);
+    if (!page) return {};
 
-  return {
-    title: page.metaTitle,
-    description: page.meta_description,
-    alternates: {
-      canonical: `https://www.airlinesofficemap.com/${page.fullPath}`,
-    },
-    openGraph: {
-      title: page.metaTitle,
-      description: page.meta_description,
-      url: `https://www.airlinesofficemap.com/${page.fullPath}`,
-      images: page.featured_image ? [{ url: page.featured_image }] : [],
-    },
-  };
+    return {
+        title:       page.metaTitle || page.title,
+        description: page.metaDescription,        // ← was missing
+        alternates: {
+            canonical: `https://www.airlinesofficemap.com/${page.fullPath}`,
+        },
+        openGraph: {
+            title:       page.metaTitle || page.title,
+            description: page.metaDescription,
+            url:         `https://www.airlinesofficemap.com/${page.fullPath}`,
+            images:      page.featuredImageLocal
+                ? [{ url: `https://www.airlinesofficemap.com${page.featuredImageLocal}`, alt: page.featuredImageAlt || page.title }]
+                : page.featuredImage
+                ? [{ url: page.featuredImage, alt: page.featuredImageAlt || page.title }]
+                : [],
+        },
+        twitter: {
+            card:        'summary_large_image',
+            title:       page.metaTitle || page.title,
+            description: page.metaDescription,
+            images:      page.featuredImageLocal
+                ? [`https://www.airlinesofficemap.com${page.featuredImageLocal}`]
+                : [],
+        },
+    };
 }
 
 export default async function PageRoute({ params }: Props) {

@@ -29,6 +29,7 @@ type PageData = {
     metaTitle:          string;
     metaDescription:    string;
     menuOrder:          number;
+    featuredImageAlt: string;
 } | null;
 
 type Props = {
@@ -72,6 +73,7 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
     const [linkUrl,        setLinkUrl]        = useState('');
     const [showLinkBox,    setShowLinkBox]    = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [featuredImageAlt, setFeaturedImageAlt] = useState(page?.featuredImageAlt || '');
     const [uploadError,    setUploadError]    = useState('');
     const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
     const titleRef     = useRef<HTMLInputElement>(null);
@@ -79,19 +81,25 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
     async function uploadFeaturedImage(file: File) {
         setUploadingImage(true);
         setUploadError('');
+
         const formData = new FormData();
         formData.append('file', file);
+
         const res  = await fetch('/api/admin/media/upload', {
             method: 'POST',
             body:   formData,
         });
         const data = await res.json();
+
         setUploadingImage(false);
+
         if (!res.ok) {
             setUploadError(data.error || 'Upload failed.');
             return;
         }
-        setFeaturedImage(data.url);
+
+        // data.url is already the local path e.g. /images/uploads/filename.jpg
+        setFeaturedImage(data.url);      // sets featuredImage
     }
 
     // Auto-generate slug from title
@@ -214,10 +222,14 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                 parentSlug:    allPages.find(p => p.id === parentId)?.fullPath?.split('/').pop() || '',
                 parentFullPath:allPages.find(p => p.id === parentId)?.fullPath || '',
                 featuredImage,
-                featuredImageLocal: page?.featuredImageLocal || '',
+                // If featuredImage starts with /images/uploads/ it's a local upload
+                featuredImageLocal: featuredImage.startsWith('/images/uploads/')
+                    ? featuredImage
+                    : page?.featuredImageLocal || '',
                 metaTitle,
                 metaDescription: metaDesc,
                 menuOrder,
+                featuredImageAlt,
             }),
         });
 
@@ -530,6 +542,19 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
 
                         {uploadError && (
                             <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '6px' }}>{uploadError}</div>
+                        )}
+
+                        {featuredImage && (
+                            <div style={{ marginTop: '10px' }}>
+                                <label style={s.sideLabel}>Alt Text</label>
+                                <input
+                                    value={featuredImageAlt}
+                                    onChange={e => setFeaturedImageAlt(e.target.value)}
+                                    placeholder="Describe the image…"
+                                    style={s.sideInput}
+                                    disabled={locked}
+                                />
+                            </div>
                         )}
                     </div>
 

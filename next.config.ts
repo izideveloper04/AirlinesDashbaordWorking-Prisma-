@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
                 hostname: 'www.airlinesofficelist.com',
             },
         ],
+        // Allow local /images/uploads/ paths
+        localPatterns: [
+            {
+                pathname: '/images/uploads/**',
+            },
+        ],
     },
 };
 
