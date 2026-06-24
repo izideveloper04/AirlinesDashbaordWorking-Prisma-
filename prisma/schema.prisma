@@ -53,6 +53,8 @@ model Page {
   revisions  Revision[]
   categories PageCategory[]
   lock       PageLock?
+
+  faqSchema String @default("[]")  // stores FAQ as JSON string
 }
 
 model Post {

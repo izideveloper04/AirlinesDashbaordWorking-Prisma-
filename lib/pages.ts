@@ -32,6 +32,7 @@ export type WPPage = {
     featuredImageAlt:   string;
     metaTitle:          string; 
     metaDescription:    string;
+    faqSchema:          string;
 };
 
 // ─────────────────────────────────────────────
@@ -95,22 +96,24 @@ export async function getSiblingPages(page: WPPage): Promise<WPPage[]> {
     });
 }
 
-// Get all pages that use parent.php template, sorted A→Z
-// Used in AirlinesTemplate
 export async function getAllParentPages(): Promise<WPPage[]> {
-    const EXCLUDED_TEMPLATE_FILES = [
-        'default',
-        'page-templates/all.php',
-        'page-templates/page_fullwidth.php',
+    const EXCLUDED_SLUGS = [
+        'blog',
+        'about-us',
+        'privacy-policy',
+        'terms-and-conditions',
+        'disclaimer',
+        'airlines',
+        'contact',
+        'sitemap',
+        'headquarters',
     ];
 
     return await prisma.page.findMany({
         where: {
-            status:      'published',
-            template:    'parent',
-            templateFile: {
-                notIn: EXCLUDED_TEMPLATE_FILES,
-            },
+            status:   'published',
+            template: 'parent',
+            slug:     { notIn: EXCLUDED_SLUGS },
         },
         orderBy: { title: 'asc' },
     });

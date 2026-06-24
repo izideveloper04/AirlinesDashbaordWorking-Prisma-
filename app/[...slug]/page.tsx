@@ -51,20 +51,22 @@ export default async function PageRoute({ params }: Props) {
     const { slug } = await params;
     const page = await getPageByPath(slug);
 
-    // Not found or not published → 404 for public visitors
-    if (!page || page.status !== 'published') notFound();
+    if (!page) notFound();
 
-  // ── Special template files get their own components ──
-  if (page.templateFile === 'page-templates/all.php') {
-    return <AirlinesTemplate page={page} />;
-  }
+    const isSpecialPage = 
+        page.templateFile === 'page-templates/all.php' ||
+        page.slug === 'airlines';   // ← add this
 
-  // ── Standard routing by template field ──
-  // parent.php → ParentTemplate  (domain.com/qatar-airways)
-  // child.php  → ChildTemplate   (domain.com/qatar-airways/london-office)
-  if (page.template === 'parent' || slug.length === 1) {
-    return <ParentTemplate page={page} />;
-  }
+    if (!isSpecialPage && page.status !== 'published') notFound();
 
-  return <ChildTemplate page={page} />;
+    // Airlines listing — any page with template 'all'
+    if (page.template === 'all') {
+        return <AirlinesTemplate page={page} />;
+    }
+
+    if (page.template === 'parent' || slug.length === 1) {
+        return <ParentTemplate page={page} />;
+    }
+
+    return <ChildTemplate page={page} />;
 }

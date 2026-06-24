@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
         metaTitle,
         metaDescription,
         menuOrder,
+        faqSchema,
     } = body;
 
     const userId = parseInt(session.user.id);
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
         metaTitle:          metaTitle          || '',
         metaDescription:    metaDescription    || '',
         menuOrder:          menuOrder          || 0,
+        faqSchema:          faqSchema          || '[]',
         createdById:        userId,
     };
 

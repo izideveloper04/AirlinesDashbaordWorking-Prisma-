@@ -37,7 +37,8 @@ type PageData = {
     metaTitle:          string;
     metaDescription:    string;
     menuOrder:          number;
-    featuredImageAlt: string;
+    featuredImageAlt:   string;
+    faqSchema:          string;
 } | null;
 
 type Props = {
@@ -238,6 +239,7 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                 metaDescription: metaDesc,
                 menuOrder,
                 featuredImageAlt,
+                faqSchema:       JSON.stringify(faqs),
             }),
         });
 
@@ -271,6 +273,30 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
     }
 
     const wordCount = editor?.storage.characterCount?.words() || 0;
+
+    const [faqs, setFaqs] = useState<{question: string; answer: string}[]>(
+        page?.faqSchema ? JSON.parse(page.faqSchema) : []
+    );
+
+    function addFaq() {
+        setFaqs(f => [...f, { question: '', answer: '' }]);
+    }
+
+    function updateFaq(index: number, field: 'question' | 'answer', value: string) {
+        setFaqs(f => f.map((faq, i) => i === index ? { ...faq, [field]: value } : faq));
+    }
+
+    function removeFaq(index: number) {
+        setFaqs(f => f.filter((_, i) => i !== index));
+    }
+
+    function moveFaq(index: number, direction: 'up' | 'down') {
+        const newFaqs = [...faqs];
+        const target  = direction === 'up' ? index - 1 : index + 1;
+        if (target < 0 || target >= newFaqs.length) return;
+        [newFaqs[index], newFaqs[target]] = [newFaqs[target], newFaqs[index]];
+        setFaqs(newFaqs);
+    }
 
     return (
         <div style={s.root}>
@@ -454,6 +480,61 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                     </div>
 
                     <div style={s.wordCount}>{wordCount} words</div>
+
+                    {/* ── FAQ Section ── */}
+                    <div style={s.faqSection}>
+                        <div style={s.faqHeader}>
+                            <div>
+                                <h3 style={s.faqTitle}>FAQ Schema</h3>
+                                <p style={s.faqSub}>FAQs added here will appear as rich results in Google search.</p>
+                            </div>
+                            <button onClick={addFaq} disabled={locked} style={s.addFaqBtn}>
+                                + Add FAQ
+                            </button>
+                        </div>
+
+                        {faqs.length === 0 && (
+                            <div style={s.faqEmpty}>
+                                No FAQs yet. Click "Add FAQ" to add questions that will show in Google search results.
+                            </div>
+                        )}
+
+                        {faqs.map((faq, index) => (
+                            <div key={index} style={s.faqItem}>
+                                <div style={s.faqItemHeader}>
+                                    <span style={s.faqNum}>FAQ {index + 1}</span>
+                                    <div style={s.faqItemActions}>
+                                        <button onClick={() => moveFaq(index, 'up')}   disabled={index === 0}              style={s.faqMoveBtn}>↑</button>
+                                        <button onClick={() => moveFaq(index, 'down')} disabled={index === faqs.length - 1} style={s.faqMoveBtn}>↓</button>
+                                        <button onClick={() => removeFaq(index)} style={s.faqRemoveBtn}>✕ Remove</button>
+                                    </div>
+                                </div>
+                                <div style={s.faqFields}>
+                                    <div style={s.faqField}>
+                                        <label style={s.faqLabel}>Question</label>
+                                        <input
+                                            value={faq.question}
+                                            onChange={e => updateFaq(index, 'question', e.target.value)}
+                                            placeholder="e.g. Where is Qatar Airways Ahmedabad office located?"
+                                            style={s.faqInput}
+                                            disabled={locked}
+                                        />
+                                    </div>
+                                    <div style={s.faqField}>
+                                        <label style={s.faqLabel}>Answer</label>
+                                        <textarea
+                                            value={faq.answer}
+                                            onChange={e => updateFaq(index, 'answer', e.target.value)}
+                                            placeholder="Provide a clear, concise answer…"
+                                            style={s.faqTextarea}
+                                            disabled={locked}
+                                            rows={3}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
 
                 </div>
 
@@ -670,4 +751,21 @@ const s: Record<string, React.CSSProperties> = {
     uploadText:     { fontSize: '13px', fontWeight: 600, color: '#1B6CA8', marginBottom: '4px' },
     uploadSub:      { fontSize: '11px', color: '#7A909E' },
     uploadingText:  { fontSize: '13px', color: '#7A909E', fontStyle: 'italic' },
+    faqSection:      { marginTop: '24px', background: '#fff', border: '1px solid #E2EAF0', borderRadius: '10px', padding: '20px' },
+    faqHeader:       { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
+    faqTitle:        { fontSize: '15px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' },
+    faqSub:          { fontSize: '12px', color: '#7A909E', margin: 0 },
+    addFaqBtn:       { background: '#1B6CA8', color: '#fff', border: 'none', borderRadius: '7px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 },
+    faqEmpty:        { textAlign: 'center', padding: '24px', color: '#7A909E', fontSize: '13px', background: '#F8FAFC', borderRadius: '7px', border: '1px dashed #E2EAF0' },
+    faqItem:         { border: '1px solid #E2EAF0', borderRadius: '8px', padding: '16px', marginBottom: '12px', background: '#F8FAFC' },
+    faqItemHeader:   { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+    faqNum:          { fontSize: '12px', fontWeight: 700, color: '#1B6CA8', textTransform: 'uppercase', letterSpacing: '0.06em' },
+    faqItemActions:  { display: 'flex', gap: '6px', alignItems: 'center' },
+    faqMoveBtn:      { background: '#fff', border: '1px solid #E2EAF0', borderRadius: '5px', padding: '3px 8px', fontSize: '12px', cursor: 'pointer', color: '#4A6070' },
+    faqRemoveBtn:    { background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '5px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 },
+    faqFields:       { display: 'flex', flexDirection: 'column' as const, gap: '10px' },
+    faqField:        { display: 'flex', flexDirection: 'column' as const, gap: '4px' },
+    faqLabel:        { fontSize: '12px', fontWeight: 600, color: '#4A6070' },
+    faqInput:        { padding: '8px 12px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', background: '#fff', width: '100%', boxSizing: 'border-box' as const },
+    faqTextarea:     { padding: '8px 12px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', background: '#fff', width: '100%', boxSizing: 'border-box' as const, resize: 'vertical' as const, fontFamily: 'inherit', minHeight: '80px' },
 };

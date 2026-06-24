@@ -4,6 +4,7 @@ import { cleanWordPressContent } from '@/lib/cleanContent';
 import ChildPagesSidebar from '@/components/sidebar/ChildPagesSidebar';
 import Image from 'next/image';
 import Link from 'next/link';
+import FaqSection from '@/components/FaqSection';
 
 type Props = { page: WPPage };
 
@@ -62,6 +63,12 @@ export default async function ChildTemplate({ page }: Props) {
               dangerouslySetInnerHTML={{ __html: content }}
             />
           )}
+
+          {/* FAQ Section with JSON-LD */}
+          <FaqSection
+              faqs={page.faqSchema ? JSON.parse(page.faqSchema) : []}
+              pageTitle={page.title}
+          />
 
         </main>
       </div>

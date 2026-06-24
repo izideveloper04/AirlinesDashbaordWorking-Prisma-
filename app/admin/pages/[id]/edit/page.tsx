@@ -46,9 +46,11 @@ export default async function EditPagePage({ params }: Props) {
                 parentId:          page.parentId,
                 featuredImage:     page.featuredImage,
                 featuredImageLocal:page.featuredImageLocal,
+                featuredImageAlt:   page.featuredImageAlt,
                 metaTitle:         page.metaTitle,
                 metaDescription:   page.metaDescription,
                 menuOrder:         page.menuOrder,
+                faqSchema:         page.faqSchema,
             }}
             allPages={allPages}
             currentUserId={parseInt(session!.user.id)}
