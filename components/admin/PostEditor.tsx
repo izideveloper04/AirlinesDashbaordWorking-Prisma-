@@ -1,5 +1,5 @@
 'use client';
-// components/admin/PageEditor.tsx
+// components/admin/PostEditor.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -15,65 +15,47 @@ import { TextAlign } from '@tiptap/extension-text-align';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { CharacterCount } from '@tiptap/extension-character-count';
 
-// Generate preview token client-side using page ID
-// Note: this is just for constructing the URL — actual validation happens server-side
-function generateToken(pageId: number): string {
-    // We can't use crypto.createHmac on the client, so we fetch it instead
-    // The preview page validates the token server-side
-    return btoa(`preview-${pageId}`).slice(0, 24);
-}
+type CategoryOption = { id: number; name: string; slug: string };
+type TagOption      = { id: number; name: string; slug: string };
 
-type PageData = {
-    id?:                number;
-    title:              string;
-    slug:               string;
-    fullPath:           string;
-    status:             string;
-    template:           string;
-    templateFile:       string;
-    parentId:           number | null;
-    featuredImage:      string;
-    featuredImageLocal: string;
-    metaTitle:          string;
-    metaDescription:    string;
-    menuOrder:          number;
-    featuredImageAlt:   string;
-    faqSchema:          string;
+type PostData = {
+    id?:             number;
+    title:           string;
+    slug:            string;
+    content:         string;
+    excerpt:         string;
+    status:          string;
+    featuredImage:   string;
+    featuredImageAlt:string;
+    metaTitle:       string;
+    metaDescription: string;
+    faqSchema:       string;
+    categoryIds:     number[];
+    tagNames:        string[];
 } | null;
 
 type Props = {
-    page:            PageData;
-    allPages:        { id: number; title: string; fullPath: string }[];
+    post:            PostData;
+    allCategories:   CategoryOption[];
     currentUserId:   number;
     currentUserName: string;
     isLocked:        boolean;
     lockedBy:        string | null;
 };
 
-const TEMPLATES = [
-    { value: 'default',  label: 'Default'      },
-    { value: 'home',     label: 'Home'          },
-    { value: 'parent',   label: 'Parent Page'   },
-    { value: 'child',    label: 'Child Page'    },
-];
-
-
-
-export default function PageEditor({ page, allPages, currentUserId, currentUserName, isLocked: initialLocked, lockedBy: initialLockedBy }: Props) {
+export default function PostEditor({ post, allCategories: initialCategories, currentUserId, currentUserName, isLocked: initialLocked, lockedBy: initialLockedBy }: Props) {
     const router = useRouter();
-    const isNew  = !page?.id;
+    const isNew  = !post?.id;
 
     // Form state
-    const [title,          setTitle]          = useState(page?.title          || '');
-    const [slug,           setSlug]           = useState(page?.slug           || '');
-    const [fullPath,       setFullPath]       = useState(page?.fullPath       || '');
-    const [status,         setStatus]         = useState(page?.status         || 'draft');
-    const [template,       setTemplate]       = useState(page?.template       || 'default');
-    const [parentId,       setParentId]       = useState<number | null>(page?.parentId || null);
-    const [featuredImage,  setFeaturedImage]  = useState(page?.featuredImage  || '');
-    const [metaTitle,      setMetaTitle]      = useState(page?.metaTitle      || '');
-    const [metaDesc,       setMetaDesc]       = useState(page?.metaDescription|| '');
-    const [menuOrder,      setMenuOrder]      = useState(page?.menuOrder      || 0);
+    const [title,          setTitle]          = useState(post?.title           || '');
+    const [slug,           setSlug]           = useState(post?.slug            || '');
+    const [excerpt,        setExcerpt]        = useState(post?.excerpt         || '');
+    const [status,         setStatus]         = useState(post?.status          || 'draft');
+    const [featuredImage,  setFeaturedImage]  = useState(post?.featuredImage   || '');
+    const [featuredImageAlt,setFeaturedImageAlt] = useState(post?.featuredImageAlt || '');
+    const [metaTitle,      setMetaTitle]      = useState(post?.metaTitle       || '');
+    const [metaDesc,       setMetaDesc]       = useState(post?.metaDescription || '');
     const [saving,         setSaving]         = useState(false);
     const [saveMsg,        setSaveMsg]        = useState('');
     const [error,          setError]          = useState('');
@@ -82,36 +64,25 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
     const [linkUrl,        setLinkUrl]        = useState('');
     const [showLinkBox,    setShowLinkBox]    = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
-    const [featuredImageAlt, setFeaturedImageAlt] = useState(page?.featuredImageAlt || '');
     const [uploadError,    setUploadError]    = useState('');
+
+    // Categories state
+    const [allCategories,  setAllCategories]  = useState<CategoryOption[]>(initialCategories);
+    const [selectedCatIds, setSelectedCatIds] = useState<number[]>(post?.categoryIds || []);
+    const [newCatName,     setNewCatName]     = useState('');
+    const [addingCat,      setAddingCat]      = useState(false);
+
+    // Tags state
+    const [tagInput,  setTagInput]  = useState('');
+    const [tagNames,  setTagNames]  = useState<string[]>(post?.tagNames || []);
+
+    // FAQ state
+    const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
+        post?.faqSchema ? JSON.parse(post.faqSchema) : []
+    );
+
     const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
-    const titleRef     = useRef<HTMLInputElement>(null);
 
-    async function uploadFeaturedImage(file: File) {
-        setUploadingImage(true);
-        setUploadError('');
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const res  = await fetch('/api/admin/media/upload', {
-            method: 'POST',
-            body:   formData,
-        });
-        const data = await res.json();
-
-        setUploadingImage(false);
-
-        if (!res.ok) {
-            setUploadError(data.error || 'Upload failed.');
-            return;
-        }
-
-        // data.url is already the local path e.g. /images/uploads/filename.jpg
-        setFeaturedImage(data.url);      // sets featuredImage
-    }
-
-    // Auto-generate slug from title
     function slugify(str: string) {
         return str.toLowerCase().trim()
             .replace(/[^a-z0-9\s-]/g, '')
@@ -121,20 +92,7 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
 
     function handleTitleChange(val: string) {
         setTitle(val);
-        if (isNew) {
-            const s = slugify(val);
-            setSlug(s);
-            setFullPath(parentId
-                ? `${allPages.find(p => p.id === parentId)?.fullPath}/${s}`
-                : s
-            );
-        }
-    }
-
-    function handleParentChange(pid: number | null) {
-        setParentId(pid);
-        const parent = allPages.find(p => p.id === pid);
-        setFullPath(parent ? `${parent.fullPath}/${slug}` : slug);
+        if (isNew) setSlug(slugify(val));
     }
 
     // TipTap editor
@@ -149,10 +107,10 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
             TableHeader,
             TableCell,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder: 'Start writing your page content here…' }),
+            Placeholder.configure({ placeholder: 'Start writing your post content here…' }),
             CharacterCount,
         ],
-        content:  page?.content || '',
+        content:  post?.content || '',
         editable: !locked,
     });
 
@@ -161,10 +119,10 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
         if (isNew || locked) return;
 
         async function acquireLock() {
-            const res  = await fetch('/api/admin/pages/lock', {
+            const res  = await fetch('/api/admin/posts/lock', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ pageId: page!.id, action: 'acquire' }),
+                body:    JSON.stringify({ postId: post!.id, action: 'acquire' }),
             });
             const data = await res.json();
             if (data.locked) {
@@ -176,90 +134,148 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
 
         acquireLock();
 
-        // Heartbeat every 60 seconds
         heartbeatRef.current = setInterval(() => {
-            fetch('/api/admin/pages/lock', {
+            fetch('/api/admin/posts/lock', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ pageId: page!.id, action: 'heartbeat' }),
+                body:    JSON.stringify({ postId: post!.id, action: 'heartbeat' }),
             });
         }, 60_000);
 
-        // Release lock on unmount
         return () => {
             if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-            if (page?.id) {
-                fetch('/api/admin/pages/lock', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ pageId: page.id, action: 'release' }),
+            if (post?.id) {
+                fetch('/api/admin/posts/lock', {
+                    method:    'POST',
+                    headers:   { 'Content-Type': 'application/json' },
+                    body:      JSON.stringify({ postId: post.id, action: 'release' }),
                     keepalive: true,
                 });
             }
         };
-    }, [page?.id, isNew]);
+    }, [post?.id, isNew]);
 
     async function takeover() {
-        await fetch('/api/admin/pages/lock', {
+        await fetch('/api/admin/posts/lock', {
             method:  'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ pageId: page!.id }),
+            body:    JSON.stringify({ postId: post!.id }),
         });
         setLocked(false);
         setLockedBy(null);
         editor?.setEditable(true);
     }
 
-    // Save
+    async function uploadFeaturedImage(file: File) {
+        setUploadingImage(true);
+        setUploadError('');
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res  = await fetch('/api/admin/media/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) {
+                setUploadError(data.error || 'Upload failed.');
+            } else {
+                setFeaturedImage(data.url);
+            }
+        } catch (err: any) {
+            setUploadError(err.message || 'Upload failed. Please try again.');
+        } finally {
+            setUploadingImage(false);
+        }
+    }
+
     const handleSave = useCallback(async (saveStatus?: string) => {
         setSaving(true);
         setError('');
 
-        const res = await fetch('/api/admin/pages/save', {
+        try {
+            const res = await fetch('/api/admin/posts/save', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                    id:              post?.id,
+                    title,
+                    slug,
+                    content:         editor?.getHTML() || '',
+                    excerpt,
+                    status:          saveStatus || status,
+                    featuredImage,
+                    featuredImageAlt,
+                    metaTitle,
+                    metaDescription: metaDesc,
+                    faqSchema:       JSON.stringify(faqs),
+                    categoryIds:     selectedCatIds,
+                    tagNames,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || 'Failed to save.');
+                return;
+            }
+
+            setSaveMsg(saveStatus === 'published' ? '✅ Published!' : '✅ Saved!');
+            setTimeout(() => setSaveMsg(''), 3000);
+
+            if (isNew && data.id) {
+                router.push(`/admin/posts/${data.id}/edit`);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Save failed. Check the console for details.');
+        } finally {
+            setSaving(false);
+        }
+    }, [title, slug, excerpt, status, featuredImage, featuredImageAlt, metaTitle, metaDesc, faqs, selectedCatIds, tagNames, editor]);
+
+    // Category helpers
+    async function addNewCategory() {
+        if (!newCatName.trim()) return;
+        setAddingCat(true);
+        const res  = await fetch('/api/admin/categories', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-                id:            page?.id,
-                title,
-                slug,
-                fullPath,
-                content:       editor?.getHTML() || '',
-                status:        saveStatus || status,
-                template,
-                templateFile:  page?.templateFile || '',
-                parentId,
-                parentSlug:    allPages.find(p => p.id === parentId)?.fullPath?.split('/').pop() || '',
-                parentFullPath:allPages.find(p => p.id === parentId)?.fullPath || '',
-                featuredImage,
-                // If featuredImage starts with /images/uploads/ it's a local upload
-                featuredImageLocal: featuredImage.startsWith('/images/uploads/')
-                    ? featuredImage
-                    : page?.featuredImageLocal || '',
-                metaTitle,
-                metaDescription: metaDesc,
-                menuOrder,
-                featuredImageAlt,
-                faqSchema:       JSON.stringify(faqs),
-            }),
+            body:    JSON.stringify({ name: newCatName.trim() }),
         });
-
-        const data = await res.json();
-        setSaving(false);
-
-        if (!res.ok) {
-            setError(data.error || 'Failed to save.');
-            return;
+        const cat = await res.json();
+        setAddingCat(false);
+        if (cat.id) {
+            setAllCategories(prev => [...prev.filter(c => c.id !== cat.id), cat].sort((a, b) => a.name.localeCompare(b.name)));
+            setSelectedCatIds(prev => prev.includes(cat.id) ? prev : [...prev, cat.id]);
+            setNewCatName('');
         }
+    }
 
-        setSaveMsg(saveStatus === 'published' ? '✅ Published!' : '✅ Saved!');
-        setTimeout(() => setSaveMsg(''), 3000);
+    function toggleCategory(id: number) {
+        setSelectedCatIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    }
 
-        if (isNew && data.id) {
-            router.push(`/admin/pages/${data.id}/edit`);
+    // Tag helpers
+    function addTag(name: string) {
+        const trimmed = name.trim();
+        if (!trimmed || tagNames.includes(trimmed)) return;
+        setTagNames(prev => [...prev, trimmed]);
+    }
+
+    function handleTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addTag(tagInput);
+            setTagInput('');
         }
-    }, [title, slug, fullPath, status, template, parentId, featuredImage, metaTitle, metaDesc, menuOrder, editor]);
+        if (e.key === 'Backspace' && !tagInput && tagNames.length > 0) {
+            setTagNames(prev => prev.slice(0, -1));
+        }
+    }
 
-    // Link insertion
+    function removeTag(name: string) {
+        setTagNames(prev => prev.filter(t => t !== name));
+    }
+
+    // Link / Image helpers
     function insertLink() {
         if (!linkUrl) return;
         editor?.chain().focus().setLink({ href: linkUrl }).run();
@@ -272,31 +288,21 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
         if (url) editor?.chain().focus().setImage({ src: url }).run();
     }
 
+    // FAQ helpers
+    function addFaq()    { setFaqs(f => [...f, { question: '', answer: '' }]); }
+    function removeFaq(i: number)  { setFaqs(f => f.filter((_, idx) => idx !== i)); }
+    function updateFaq(i: number, field: 'question' | 'answer', val: string) {
+        setFaqs(f => f.map((faq, idx) => idx === i ? { ...faq, [field]: val } : faq));
+    }
+    function moveFaq(i: number, dir: 'up' | 'down') {
+        const arr = [...faqs];
+        const t   = dir === 'up' ? i - 1 : i + 1;
+        if (t < 0 || t >= arr.length) return;
+        [arr[i], arr[t]] = [arr[t], arr[i]];
+        setFaqs(arr);
+    }
+
     const wordCount = editor?.storage.characterCount?.words() || 0;
-
-    const [faqs, setFaqs] = useState<{question: string; answer: string}[]>(
-        page?.faqSchema ? JSON.parse(page.faqSchema) : []
-    );
-
-    function addFaq() {
-        setFaqs(f => [...f, { question: '', answer: '' }]);
-    }
-
-    function updateFaq(index: number, field: 'question' | 'answer', value: string) {
-        setFaqs(f => f.map((faq, i) => i === index ? { ...faq, [field]: value } : faq));
-    }
-
-    function removeFaq(index: number) {
-        setFaqs(f => f.filter((_, i) => i !== index));
-    }
-
-    function moveFaq(index: number, direction: 'up' | 'down') {
-        const newFaqs = [...faqs];
-        const target  = direction === 'up' ? index - 1 : index + 1;
-        if (target < 0 || target >= newFaqs.length) return;
-        [newFaqs[index], newFaqs[target]] = [newFaqs[target], newFaqs[index]];
-        setFaqs(newFaqs);
-    }
 
     return (
         <div style={s.root}>
@@ -304,60 +310,52 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
             {/* Top bar */}
             <div style={s.topBar}>
                 <div style={s.topBarLeft}>
-                    <button onClick={() => router.push('/admin/pages')} style={s.backBtn}>← Pages</button>
-                    <h1 style={s.heading}>{isNew ? 'Add New Page' : 'Edit Page'}</h1>
+                    <button onClick={() => router.push('/admin/posts')} style={s.backBtn}>← Posts</button>
+                    <h1 style={s.heading}>{isNew ? 'Add New Post' : 'Edit Post'}</h1>
                 </div>
                 <div style={s.topBarRight}>
                     {saveMsg && <span style={s.saveMsg}>{saveMsg}</span>}
                     {error   && <span style={s.errorMsg}>{error}</span>}
-                    <button onClick={() => handleSave('draft')} disabled={saving || locked} style={s.draftBtn}>
+                    <button onClick={() => handleSave('draft')}     disabled={saving || locked} style={s.draftBtn}>
                         {saving ? 'Saving…' : 'Save Draft'}
                     </button>
                     <button onClick={() => handleSave('published')} disabled={saving || locked} style={s.publishBtn}>
                         {saving ? 'Saving…' : 'Publish'}
                     </button>
-                    {/* View page button — only shows if page has a fullPath */}
-                    
-                    {page?.id && (
+                    {post?.id && (
                         <a
-                            href={status === 'published' ? `/${fullPath}` : `/preview/${page.id}`}
+                            href={status === 'published' ? `/blog/${slug}` : `/post-preview/${post.id}`}
                             target="_blank"
                             rel="noreferrer"
                             style={{
                                 ...s.viewBtn,
-                                ...(status !== 'published' ? {
-                                    background:   '#fef9c3',
-                                    borderColor:  '#fde68a',
-                                    color:        '#92400e',
-                                } : {}),
+                                ...(status !== 'published' ? { background: '#fef9c3', borderColor: '#fde68a', color: '#92400e' } : {}),
                             }}
                         >
-                            {status === 'published' ? 'View Page ↗' : '👁 Preview Draft ↗'}
+                            {status === 'published' ? 'View Post ↗' : '👁 Preview Draft ↗'}
                         </a>
                     )}
-
                 </div>
             </div>
 
             {/* Lock banner */}
             {locked && (
                 <div style={s.lockBanner}>
-                    <span>⚠️ <strong>{lockedBy}</strong> is currently editing this page. Editing is disabled.</span>
+                    <span>⚠️ <strong>{lockedBy}</strong> is currently editing this post. Editing is disabled.</span>
                     <button onClick={takeover} style={s.takeoverBtn}>Take Over Editing</button>
                 </div>
             )}
 
             <div style={s.layout}>
 
-                {/* ── Main content area ── */}
+                {/* ── Main content ── */}
                 <div style={s.main}>
 
                     {/* Title */}
                     <input
-                        ref={titleRef}
                         value={title}
                         onChange={e => handleTitleChange(e.target.value)}
-                        placeholder="Page title"
+                        placeholder="Post title"
                         style={s.titleInput}
                         disabled={locked}
                     />
@@ -365,10 +363,10 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                     {/* Slug */}
                     <div style={s.slugRow}>
                         <span style={s.slugLabel}>URL:</span>
-                        <span style={s.slugPrefix}>/</span>
+                        <span style={s.slugPrefix}>/blog/</span>
                         <input
-                            value={fullPath}
-                            onChange={e => setFullPath(e.target.value)}
+                            value={slug}
+                            onChange={e => setSlug(e.target.value)}
                             style={s.slugInput}
                             disabled={locked}
                         />
@@ -377,7 +375,6 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                     {/* Editor toolbar */}
                     {editor && (
                         <div style={s.toolbar}>
-                            {/* Text format */}
                             <select
                                 onChange={e => {
                                     const v = e.target.value;
@@ -395,12 +392,11 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
 
                             <div style={s.toolSep} />
 
-                            {/* Bold, Italic, Underline, Strike */}
                             {[
-                                { label: 'B',  title: 'Bold',          action: () => editor.chain().focus().toggleBold().run(),          active: editor.isActive('bold')      },
-                                { label: 'I',  title: 'Italic',        action: () => editor.chain().focus().toggleItalic().run(),        active: editor.isActive('italic')    },
-                                { label: 'U',  title: 'Underline',     action: () => editor.chain().focus().toggleUnderline().run(),     active: editor.isActive('underline') },
-                                { label: 'S',  title: 'Strikethrough', action: () => editor.chain().focus().toggleStrike().run(),        active: editor.isActive('strike')    },
+                                { label: 'B', title: 'Bold',          action: () => editor.chain().focus().toggleBold().run(),      active: editor.isActive('bold')      },
+                                { label: 'I', title: 'Italic',        action: () => editor.chain().focus().toggleItalic().run(),    active: editor.isActive('italic')    },
+                                { label: 'U', title: 'Underline',     action: () => editor.chain().focus().toggleUnderline().run(), active: editor.isActive('underline') },
+                                { label: 'S', title: 'Strikethrough', action: () => editor.chain().focus().toggleStrike().run(),    active: editor.isActive('strike')    },
                             ].map(btn => (
                                 <button key={btn.label} title={btn.title} onClick={btn.action}
                                     style={{ ...s.toolBtn, ...(btn.active ? s.toolBtnActive : {}) }}>
@@ -410,7 +406,6 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
 
                             <div style={s.toolSep} />
 
-                            {/* Alignment */}
                             {[
                                 { label: '≡', title: 'Align Left',   align: 'left'   },
                                 { label: '≡', title: 'Align Center', align: 'center' },
@@ -425,18 +420,15 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
 
                             <div style={s.toolSep} />
 
-                            {/* Lists */}
-                            <button title="Bullet List"  onClick={() => editor.chain().focus().toggleBulletList().run()}  style={{ ...s.toolBtn, ...(editor.isActive('bulletList')  ? s.toolBtnActive : {}) }}>• List</button>
-                            <button title="Ordered List" onClick={() => editor.chain().focus().toggleOrderedList().run()} style={{ ...s.toolBtn, ...(editor.isActive('orderedList') ? s.toolBtnActive : {}) }}>1. List</button>
-                            <button title="Blockquote"   onClick={() => editor.chain().focus().toggleBlockquote().run()}  style={{ ...s.toolBtn, ...(editor.isActive('blockquote')  ? s.toolBtnActive : {}) }}>" Quote</button>
-                            <button title="Code Block"   onClick={() => editor.chain().focus().toggleCodeBlock().run()}   style={{ ...s.toolBtn, ...(editor.isActive('codeBlock')   ? s.toolBtnActive : {}) }}>{'<>'} Code</button>
+                            <button onClick={() => editor.chain().focus().toggleBulletList().run()}  style={{ ...s.toolBtn, ...(editor.isActive('bulletList')  ? s.toolBtnActive : {}) }}>• List</button>
+                            <button onClick={() => editor.chain().focus().toggleOrderedList().run()} style={{ ...s.toolBtn, ...(editor.isActive('orderedList') ? s.toolBtnActive : {}) }}>1. List</button>
+                            <button onClick={() => editor.chain().focus().toggleBlockquote().run()}  style={{ ...s.toolBtn, ...(editor.isActive('blockquote')  ? s.toolBtnActive : {}) }}>" Quote</button>
+                            <button onClick={() => editor.chain().focus().toggleCodeBlock().run()}   style={{ ...s.toolBtn, ...(editor.isActive('codeBlock')   ? s.toolBtnActive : {}) }}>{'<>'} Code</button>
 
                             <div style={s.toolSep} />
 
-                            {/* Link */}
                             <div style={{ position: 'relative' }}>
                                 <button
-                                    title="Insert Link"
                                     onClick={() => setShowLinkBox(v => !v)}
                                     style={{ ...s.toolBtn, ...(editor.isActive('link') ? s.toolBtnActive : {}) }}
                                 >
@@ -452,61 +444,65 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                                             onKeyDown={e => e.key === 'Enter' && insertLink()}
                                             autoFocus
                                         />
-                                        <button onClick={insertLink}         style={s.linkApplyBtn}>Apply</button>
+                                        <button onClick={insertLink} style={s.linkApplyBtn}>Apply</button>
                                         <button onClick={() => editor.chain().focus().unsetLink().run()} style={s.linkRemoveBtn}>Remove</button>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Image */}
-                            <button title="Insert Image" onClick={insertImage} style={s.toolBtn}>🖼 Image</button>
-
-                            {/* Table */}
-                            <button title="Insert Table"
-                                onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-                                style={s.toolBtn}>⊞ Table</button>
+                            <button onClick={insertImage} style={s.toolBtn}>🖼 Image</button>
+                            <button onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} style={s.toolBtn}>⊞ Table</button>
 
                             <div style={s.toolSep} />
 
-                            {/* Undo / Redo */}
-                            <button title="Undo" onClick={() => editor.chain().focus().undo().run()} style={s.toolBtn}>↩ Undo</button>
-                            <button title="Redo" onClick={() => editor.chain().focus().redo().run()} style={s.toolBtn}>↪ Redo</button>
+                            <button onClick={() => editor.chain().focus().undo().run()} style={s.toolBtn}>↩ Undo</button>
+                            <button onClick={() => editor.chain().focus().redo().run()} style={s.toolBtn}>↪ Redo</button>
                         </div>
                     )}
 
-                    {/* Editor content area */}
                     <div style={{ ...s.editorWrap, opacity: locked ? 0.6 : 1 }}>
                         <EditorContent editor={editor} style={s.editor} />
                     </div>
-
                     <div style={s.wordCount}>{wordCount} words</div>
 
-                    {/* ── FAQ Section ── */}
+                    {/* Excerpt */}
+                    <div style={s.excerptSection}>
+                        <h3 style={s.sectionTitle}>Excerpt</h3>
+                        <textarea
+                            value={excerpt}
+                            onChange={e => setExcerpt(e.target.value)}
+                            placeholder="Short description shown in post listings and search results…"
+                            style={s.excerptTextarea}
+                            disabled={locked}
+                            rows={3}
+                        />
+                        <div style={{ fontSize: '11px', color: '#7A909E', marginTop: '4px' }}>
+                            Leave blank to auto-generate from content.
+                        </div>
+                    </div>
+
+                    {/* FAQ Section */}
                     <div style={s.faqSection}>
                         <div style={s.faqHeader}>
                             <div>
                                 <h3 style={s.faqTitle}>FAQ Schema</h3>
                                 <p style={s.faqSub}>FAQs added here will appear as rich results in Google search.</p>
                             </div>
-                            <button onClick={addFaq} disabled={locked} style={s.addFaqBtn}>
-                                + Add FAQ
-                            </button>
+                            <button onClick={addFaq} disabled={locked} style={s.addFaqBtn}>+ Add FAQ</button>
                         </div>
 
                         {faqs.length === 0 && (
-                            <div style={s.faqEmpty}>
-                                No FAQs yet. Click "Add FAQ" to add questions that will show in Google search results.
-                            </div>
+                            <div style={s.faqEmpty}>No FAQs yet. Click "Add FAQ" to add questions.</div>
                         )}
 
-                        {faqs.map((faq, index) => (
-                            <div key={index} style={s.faqItem}>
+                        {faqs.map((faq, i) => (
+                            <div key={i} style={s.faqItem}>
                                 <div style={s.faqItemHeader}>
-                                    <span style={s.faqNum}>FAQ {index + 1}</span>
+                                    <span style={s.faqNum}>FAQ {i + 1}</span>
                                     <div style={s.faqItemActions}>
-                                        <button onClick={() => moveFaq(index, 'up')}   disabled={index === 0}              style={s.faqMoveBtn}>↑</button>
-                                        <button onClick={() => moveFaq(index, 'down')} disabled={index === faqs.length - 1} style={s.faqMoveBtn}>↓</button>
-                                        <button onClick={() => removeFaq(index)} style={s.faqRemoveBtn}>✕ Remove</button>
+                                        <button onClick={() => moveFaq(i, 'up')}   disabled={i === 0}             style={s.faqMoveBtn}>↑</button>
+                                        <button onClick={() => moveFaq(i, 'down')} disabled={i === faqs.length-1} style={s.faqMoveBtn}>↓</button>
+                                        <button onClick={() => removeFaq(i)} style={s.faqRemoveBtn}>✕ Remove</button>
                                     </div>
                                 </div>
                                 <div style={s.faqFields}>
@@ -514,8 +510,8 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                                         <label style={s.faqLabel}>Question</label>
                                         <input
                                             value={faq.question}
-                                            onChange={e => updateFaq(index, 'question', e.target.value)}
-                                            placeholder="e.g. Where is Qatar Airways Ahmedabad office located?"
+                                            onChange={e => updateFaq(i, 'question', e.target.value)}
+                                            placeholder="e.g. How do I book a flight?"
                                             style={s.faqInput}
                                             disabled={locked}
                                         />
@@ -524,7 +520,7 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                                         <label style={s.faqLabel}>Answer</label>
                                         <textarea
                                             value={faq.answer}
-                                            onChange={e => updateFaq(index, 'answer', e.target.value)}
+                                            onChange={e => updateFaq(i, 'answer', e.target.value)}
                                             placeholder="Provide a clear, concise answer…"
                                             style={s.faqTextarea}
                                             disabled={locked}
@@ -535,63 +531,102 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                             </div>
                         ))}
                     </div>
-
                 </div>
 
                 {/* ── Sidebar ── */}
                 <aside style={s.sidebar}>
 
-                    {/* Page Settings */}
+                    {/* Categories */}
                     <div style={s.sideCard}>
-                        <div style={s.sideCardTitle}>Page Settings</div>
-                        <div style={s.sideRow}>
-                            <label style={s.sideLabel}>Menu Order</label>
-                            <input type="number" value={menuOrder} onChange={e => setMenuOrder(parseInt(e.target.value))} style={s.sideInput} disabled={locked} />
+                        <div style={s.sideCardTitle}>Categories</div>
+
+                        <div style={s.catList}>
+                            {allCategories.length === 0 && (
+                                <div style={{ fontSize: '12px', color: '#7A909E' }}>No categories yet.</div>
+                            )}
+                            {allCategories.map(cat => (
+                                <label key={cat.id} style={s.catRow}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedCatIds.includes(cat.id)}
+                                        onChange={() => toggleCategory(cat.id)}
+                                        disabled={locked}
+                                        style={{ marginRight: 8 }}
+                                    />
+                                    <span style={s.catName}>{cat.name}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        <div style={s.addCatSection}>
+                            <div style={s.addCatLabel}>Add New Category</div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <input
+                                    value={newCatName}
+                                    onChange={e => setNewCatName(e.target.value)}
+                                    placeholder="Category name"
+                                    style={{ ...s.sideInput, flex: 1 }}
+                                    onKeyDown={e => e.key === 'Enter' && addNewCategory()}
+                                    disabled={locked || addingCat}
+                                />
+                                <button
+                                    onClick={addNewCategory}
+                                    disabled={!newCatName.trim() || locked || addingCat}
+                                    style={s.addCatBtn}
+                                >
+                                    {addingCat ? '…' : 'Add'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Template */}
+                    {/* Tags */}
                     <div style={s.sideCard}>
-                        <div style={s.sideCardTitle}>Page Template</div>
-                        <select value={template} onChange={e => setTemplate(e.target.value)} style={s.sideSelect} disabled={locked}>
-                            {TEMPLATES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Parent page */}
-                    <div style={s.sideCard}>
-                        <div style={s.sideCardTitle}>Parent Page</div>
-                        <select
-                            value={parentId || ''}
-                            onChange={e => handleParentChange(e.target.value ? parseInt(e.target.value) : null)}
-                            style={s.sideSelect}
-                            disabled={locked}
-                        >
-                            <option value="">— No parent —</option>
-                            {allPages.map(p => (
-                                <option key={p.id} value={p.id}>{p.title}</option>
+                        <div style={s.sideCardTitle}>Tags</div>
+                        <div style={s.tagWrap}>
+                            {tagNames.map(tag => (
+                                <span key={tag} style={s.tagChip}>
+                                    {tag}
+                                    <button
+                                        onClick={() => removeTag(tag)}
+                                        style={s.tagRemove}
+                                        disabled={locked}
+                                    >×</button>
+                                </span>
                             ))}
-                        </select>
+                            <input
+                                value={tagInput}
+                                onChange={e => setTagInput(e.target.value)}
+                                onKeyDown={handleTagKeyDown}
+                                onBlur={() => { if (tagInput.trim()) { addTag(tagInput); setTagInput(''); } }}
+                                placeholder={tagNames.length === 0 ? 'Add tags…' : ''}
+                                style={s.tagInput}
+                                disabled={locked}
+                            />
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#7A909E', marginTop: '6px' }}>
+                            Separate tags with Enter or comma.
+                        </div>
                     </div>
 
-                    {/* Featured image */}
+                    {/* Featured Image */}
                     <div style={s.sideCard}>
                         <div style={s.sideCardTitle}>Featured Image</div>
 
                         {featuredImage ? (
-                            <div style={s.featImgPreview}>
+                            <div>
                                 <img
                                     src={featuredImage}
                                     alt=""
-                                    style={{ width: '100%', borderRadius: 6, display: 'block', maxHeight: 160, objectFit: 'cover' }}
+                                    style={{ width: '100%', borderRadius: 6, display: 'block', maxHeight: 160, objectFit: 'cover', marginBottom: 8 }}
                                 />
                                 <button onClick={() => setFeaturedImage('')} style={s.removeImgBtn}>✕ Remove Image</button>
                             </div>
                         ) : (
                             <div
                                 style={s.uploadZone}
-                                onClick={() => !locked && document.getElementById('feat-img-input')?.click()}
-                                onDragOver={e => { e.preventDefault(); }}
+                                onClick={() => !locked && document.getElementById('post-feat-img')?.click()}
+                                onDragOver={e => e.preventDefault()}
                                 onDrop={async e => {
                                     e.preventDefault();
                                     if (locked) return;
@@ -611,9 +646,8 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                             </div>
                         )}
 
-                        {/* Hidden file input */}
                         <input
-                            id="feat-img-input"
+                            id="post-feat-img"
                             type="file"
                             accept="image/*"
                             style={{ display: 'none' }}
@@ -625,9 +659,7 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                             }}
                         />
 
-                        {uploadError && (
-                            <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '6px' }}>{uploadError}</div>
-                        )}
+                        {uploadError && <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '6px' }}>{uploadError}</div>}
 
                         {featuredImage && (
                             <div style={{ marginTop: '10px' }}>
@@ -669,11 +701,9 @@ export default function PageEditor({ page, allPages, currentUserId, currentUserN
                             />
                             <div style={s.charCount}>{metaDesc.length}/160</div>
                         </div>
-
-                        {/* SEO preview */}
                         <div style={s.seoPreview}>
-                            <div style={s.seoPreviewTitle}>{metaTitle || title || 'Page Title'}</div>
-                            <div style={s.seoPreviewUrl}>airlinesofficemap.com/{fullPath}</div>
+                            <div style={s.seoPreviewTitle}>{metaTitle || title || 'Post Title'}</div>
+                            <div style={s.seoPreviewUrl}>airlinesofficemap.com/blog/{slug}</div>
                             <div style={s.seoPreviewDesc}>{metaDesc || 'No description set.'}</div>
                         </div>
                     </div>
@@ -695,6 +725,7 @@ const s: Record<string, React.CSSProperties> = {
     errorMsg:      { fontSize: '13px', color: '#dc2626', fontWeight: 600 },
     draftBtn:      { padding: '8px 16px', background: '#F8FAFC', border: '1px solid #E2EAF0', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#1A2B3C' },
     publishBtn:    { padding: '8px 16px', background: '#1B6CA8', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', color: '#fff' },
+    viewBtn:       { padding: '8px 14px', background: '#F0F7FF', border: '1px solid #C2DFF5', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#1B6CA8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' },
     lockBanner:    { background: '#fef9c3', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', fontSize: '13.5px', color: '#92400e' },
     takeoverBtn:   { background: '#d97706', color: '#fff', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 },
     layout:        { display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', alignItems: 'start' },
@@ -716,6 +747,26 @@ const s: Record<string, React.CSSProperties> = {
     editorWrap:    { border: '1px solid #E2EAF0', borderTop: 'none', borderRadius: '0 0 8px 8px', background: '#fff', minHeight: '400px' },
     editor:        { padding: '20px', minHeight: '400px', outline: 'none', fontSize: '15px', lineHeight: 1.7, color: '#1A2B3C' },
     wordCount:     { fontSize: '12px', color: '#7A909E', marginTop: '6px', textAlign: 'right' },
+    excerptSection:{ marginTop: '20px', background: '#fff', border: '1px solid #E2EAF0', borderRadius: '10px', padding: '20px' },
+    sectionTitle:  { fontSize: '15px', fontWeight: 700, color: '#0A1628', margin: '0 0 10px' },
+    excerptTextarea:{ width: '100%', padding: '10px 12px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6 },
+    faqSection:    { marginTop: '20px', background: '#fff', border: '1px solid #E2EAF0', borderRadius: '10px', padding: '20px' },
+    faqHeader:     { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
+    faqTitle:      { fontSize: '15px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' },
+    faqSub:        { fontSize: '12px', color: '#7A909E', margin: 0 },
+    addFaqBtn:     { background: '#1B6CA8', color: '#fff', border: 'none', borderRadius: '7px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 },
+    faqEmpty:      { textAlign: 'center', padding: '24px', color: '#7A909E', fontSize: '13px', background: '#F8FAFC', borderRadius: '7px', border: '1px dashed #E2EAF0' },
+    faqItem:       { border: '1px solid #E2EAF0', borderRadius: '8px', padding: '16px', marginBottom: '12px', background: '#F8FAFC' },
+    faqItemHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+    faqNum:        { fontSize: '12px', fontWeight: 700, color: '#1B6CA8', textTransform: 'uppercase', letterSpacing: '0.06em' },
+    faqItemActions:{ display: 'flex', gap: '6px', alignItems: 'center' },
+    faqMoveBtn:    { background: '#fff', border: '1px solid #E2EAF0', borderRadius: '5px', padding: '3px 8px', fontSize: '12px', cursor: 'pointer', color: '#4A6070' },
+    faqRemoveBtn:  { background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '5px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 },
+    faqFields:     { display: 'flex', flexDirection: 'column' as const, gap: '10px' },
+    faqField:      { display: 'flex', flexDirection: 'column' as const, gap: '4px' },
+    faqLabel:      { fontSize: '12px', fontWeight: 600, color: '#4A6070' },
+    faqInput:      { padding: '8px 12px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', background: '#fff', width: '100%', boxSizing: 'border-box' as const },
+    faqTextarea:   { padding: '8px 12px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', background: '#fff', width: '100%', boxSizing: 'border-box' as const, resize: 'vertical' as const, fontFamily: 'inherit', minHeight: '80px' },
     sidebar:       { display: 'flex', flexDirection: 'column', gap: '14px' },
     sideCard:      { background: '#fff', border: '1px solid #E2EAF0', borderRadius: '10px', padding: '16px' },
     sideCardTitle: { fontSize: '12px', fontWeight: 700, color: '#0A1628', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '12px' },
@@ -725,33 +776,24 @@ const s: Record<string, React.CSSProperties> = {
     sideInput:     { width: '100%', padding: '8px 10px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' },
     sideTextarea:  { width: '100%', padding: '8px 10px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' },
     charCount:     { fontSize: '11px', color: '#7A909E', textAlign: 'right', marginTop: '3px' },
-    featImgPreview:{ marginBottom: '10px', position: 'relative' },
+    catList:       { maxHeight: '200px', overflowY: 'auto', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '6px' },
+    catRow:        { display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '4px 0' },
+    catName:       { fontSize: '13px', color: '#1A2B3C' },
+    addCatSection: { borderTop: '1px solid #E2EAF0', paddingTop: '12px', marginTop: '4px' },
+    addCatLabel:   { fontSize: '11px', fontWeight: 700, color: '#7A909E', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' },
+    addCatBtn:     { padding: '8px 12px', background: '#1B6CA8', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 },
+    tagWrap:       { display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '8px', border: '1px solid #E2EAF0', borderRadius: '6px', background: '#fff', minHeight: '40px', cursor: 'text' },
+    tagChip:       { display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#E8F4FD', color: '#1B6CA8', borderRadius: '99px', padding: '3px 10px', fontSize: '12px', fontWeight: 600 },
+    tagRemove:     { background: 'none', border: 'none', cursor: 'pointer', color: '#1B6CA8', padding: '0 0 0 2px', fontSize: '14px', lineHeight: 1, display: 'flex', alignItems: 'center' },
+    tagInput:      { border: 'none', outline: 'none', fontSize: '13px', color: '#1A2B3C', minWidth: '80px', flex: 1, padding: '2px 0' },
     removeImgBtn:  { marginTop: '6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '5px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', width: '100%' },
+    uploadZone:    { border: '2px dashed #C2DFF5', borderRadius: '8px', padding: '24px 16px', textAlign: 'center', cursor: 'pointer', background: '#F0F7FF' },
+    uploadIcon:    { fontSize: '28px', marginBottom: '8px' },
+    uploadText:    { fontSize: '13px', fontWeight: 600, color: '#1B6CA8', marginBottom: '4px' },
+    uploadSub:     { fontSize: '11px', color: '#7A909E' },
+    uploadingText: { fontSize: '13px', color: '#7A909E', fontStyle: 'italic' },
     seoPreview:    { marginTop: '14px', padding: '12px', background: '#F8FAFC', borderRadius: '7px', border: '1px solid #E2EAF0' },
     seoPreviewTitle:{ fontSize: '14px', color: '#1a0dab', fontWeight: 600, marginBottom: '2px' },
     seoPreviewUrl: { fontSize: '12px', color: '#006621', marginBottom: '4px' },
     seoPreviewDesc:{ fontSize: '12px', color: '#545454', lineHeight: 1.5 },
-    viewBtn: {  padding: '8px 14px', background: '#F0F7FF', border: '1px solid #C2DFF5', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#1B6CA8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', },
-    uploadZone:     { border: '2px dashed #C2DFF5', borderRadius: '8px', padding: '24px 16px', textAlign: 'center', cursor: 'pointer', background: '#F0F7FF', transition: 'all 0.2s' },
-    uploadIcon:     { fontSize: '28px', marginBottom: '8px' },
-    uploadText:     { fontSize: '13px', fontWeight: 600, color: '#1B6CA8', marginBottom: '4px' },
-    uploadSub:      { fontSize: '11px', color: '#7A909E' },
-    uploadingText:  { fontSize: '13px', color: '#7A909E', fontStyle: 'italic' },
-    faqSection:      { marginTop: '24px', background: '#fff', border: '1px solid #E2EAF0', borderRadius: '10px', padding: '20px' },
-    faqHeader:       { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
-    faqTitle:        { fontSize: '15px', fontWeight: 700, color: '#0A1628', margin: '0 0 4px' },
-    faqSub:          { fontSize: '12px', color: '#7A909E', margin: 0 },
-    addFaqBtn:       { background: '#1B6CA8', color: '#fff', border: 'none', borderRadius: '7px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 },
-    faqEmpty:        { textAlign: 'center', padding: '24px', color: '#7A909E', fontSize: '13px', background: '#F8FAFC', borderRadius: '7px', border: '1px dashed #E2EAF0' },
-    faqItem:         { border: '1px solid #E2EAF0', borderRadius: '8px', padding: '16px', marginBottom: '12px', background: '#F8FAFC' },
-    faqItemHeader:   { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
-    faqNum:          { fontSize: '12px', fontWeight: 700, color: '#1B6CA8', textTransform: 'uppercase', letterSpacing: '0.06em' },
-    faqItemActions:  { display: 'flex', gap: '6px', alignItems: 'center' },
-    faqMoveBtn:      { background: '#fff', border: '1px solid #E2EAF0', borderRadius: '5px', padding: '3px 8px', fontSize: '12px', cursor: 'pointer', color: '#4A6070' },
-    faqRemoveBtn:    { background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '5px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 },
-    faqFields:       { display: 'flex', flexDirection: 'column' as const, gap: '10px' },
-    faqField:        { display: 'flex', flexDirection: 'column' as const, gap: '4px' },
-    faqLabel:        { fontSize: '12px', fontWeight: 600, color: '#4A6070' },
-    faqInput:        { padding: '8px 12px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', background: '#fff', width: '100%', boxSizing: 'border-box' as const },
-    faqTextarea:     { padding: '8px 12px', border: '1px solid #E2EAF0', borderRadius: '6px', fontSize: '13px', background: '#fff', width: '100%', boxSizing: 'border-box' as const, resize: 'vertical' as const, fontFamily: 'inherit', minHeight: '80px' },
 };

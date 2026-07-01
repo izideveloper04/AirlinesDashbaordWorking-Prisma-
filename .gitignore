@@ -4,9 +4,22 @@ out/
 dist/
 build/
 
+# Environment — copy .env.example and fill in your values
 .env
 .env.local
 
+# Prisma generated client
 .prisma/client
 
+# SQLite database (contains real data — never commit)
+prisma/database/database.db
+
+# User-uploaded media
+public/images/uploads/
+
+# Claude Code internal files
+.claude/
+
+# Build artifacts
+tsconfig.tsbuildinfo
 *.log

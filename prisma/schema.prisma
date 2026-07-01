@@ -58,18 +58,20 @@ model Page {
 }
 
 model Post {
-  id              Int      @id @default(autoincrement())
-  title           String
-  slug            String   @unique
-  content         String   @default("")
-  excerpt         String   @default("")
-  status          String   @default("draft")
-  featuredImage   String   @default("")
-  metaTitle       String   @default("")
-  metaDescription String   @default("")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdById     Int?
+  id               Int      @id @default(autoincrement())
+  title            String
+  slug             String   @unique
+  content          String   @default("")
+  excerpt          String   @default("")
+  status           String   @default("draft")
+  featuredImage    String   @default("")
+  featuredImageAlt String   @default("")
+  metaTitle        String   @default("")
+  metaDescription  String   @default("")
+  faqSchema        String   @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdById      Int?
 
   createdBy  User?          @relation("PostCreatedBy", fields: [createdById], references: [id])
   categories PostCategory[]
@@ -94,6 +96,8 @@ model Media {
   filename     String
   originalName String
   url          String
+  alt          String   @default("")
+  title        String   @default("")
   size         Int      @default(0)
   mimeType     String   @default("")
   uploadedById Int?
@@ -146,6 +150,11 @@ model PostTag {
   tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([postId, tagId])
+}
+
+model Setting {
+  key   String @id
+  value String @default("")
 }
 
 model PageLock {

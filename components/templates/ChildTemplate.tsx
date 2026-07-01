@@ -10,7 +10,7 @@ type Props = { page: WPPage };
 
 export default async function ChildTemplate({ page }: Props) {
   const siblings = await getSiblingPages(page);
-  const parent   = await getParentPage(page.parentId);
+  const parent   = page.parentId != null ? await getParentPage(page.parentId) : null;
   const content  = cleanWordPressContent(page.content);
 
   return (

@@ -2,10 +2,9 @@
 // app/admin/login/page.tsx
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
-    const router      = useRouter();
     const params      = useSearchParams();
     const callbackUrl = params.get('callbackUrl') || '/admin/dashboard';
 
@@ -28,13 +27,15 @@ export default function LoginPage() {
 
         setLoading(false);
 
-        if (res?.error) {
+        if (!res?.ok || res?.error) {
             setError('Invalid email or password.');
             return;
         }
 
-        router.push(callbackUrl);
-        router.refresh();
+        // Full page reload so the browser sends the new session cookie
+        // with the very first request. router.push() can race against
+        // cookie propagation and land the middleware on a missing token.
+        window.location.href = callbackUrl;
     }
 
     return (
