@@ -1,6 +1,7 @@
 'use client';
 // components/admin/PostEditor.tsx
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { buildPostUrl } from '@/lib/permalink-utils';
 import { useRouter } from 'next/navigation';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
@@ -41,9 +42,10 @@ type Props = {
     currentUserName: string;
     isLocked:        boolean;
     lockedBy:        string | null;
+    permalinkBase:   string;
 };
 
-export default function PostEditor({ post, allCategories: initialCategories, currentUserId, currentUserName, isLocked: initialLocked, lockedBy: initialLockedBy }: Props) {
+export default function PostEditor({ post, allCategories: initialCategories, currentUserId, currentUserName, isLocked: initialLocked, lockedBy: initialLockedBy, permalinkBase }: Props) {
     const router = useRouter();
     const isNew  = !post?.id;
 
@@ -324,7 +326,7 @@ export default function PostEditor({ post, allCategories: initialCategories, cur
                     </button>
                     {post?.id && (
                         <a
-                            href={status === 'published' ? `/blog/${slug}` : `/post-preview/${post.id}`}
+                            href={status === 'published' ? buildPostUrl(slug, permalinkBase) : `/post-preview/${post.id}`}
                             target="_blank"
                             rel="noreferrer"
                             style={{
@@ -703,7 +705,7 @@ export default function PostEditor({ post, allCategories: initialCategories, cur
                         </div>
                         <div style={s.seoPreview}>
                             <div style={s.seoPreviewTitle}>{metaTitle || title || 'Post Title'}</div>
-                            <div style={s.seoPreviewUrl}>airlinesofficemap.com/blog/{slug}</div>
+                            <div style={s.seoPreviewUrl}>airlinesofficemap.com{buildPostUrl(slug, permalinkBase)}</div>
                             <div style={s.seoPreviewDesc}>{metaDesc || 'No description set.'}</div>
                         </div>
                     </div>

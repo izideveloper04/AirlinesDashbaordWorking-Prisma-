@@ -37,7 +37,7 @@ export default async function ChildTemplate({ page }: Props) {
         <aside className="child-sidebar-wrap">
           <ChildPagesSidebar
             siblings={siblings}
-            parent={parent}
+            parent={parent ?? undefined}
             currentPageId={page.id}
           />
         </aside>

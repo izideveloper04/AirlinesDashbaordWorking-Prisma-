@@ -36,7 +36,7 @@ export default async function ParentTemplate({ page }: Props) {
 
         <h1 className="parent-title">{page.title}</h1>
         {page.metaDescription&& (
-          <p className="parent-subtitle">{page.meta_description}</p>
+          <p className="parent-subtitle">{page.metaDescription}</p>
         )}
       </div>
 

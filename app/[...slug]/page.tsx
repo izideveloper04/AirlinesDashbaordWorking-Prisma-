@@ -1,9 +1,11 @@
 // app/[...slug]/page.tsx
 import { notFound } from 'next/navigation';
-import { getPageByPath, getAllPagePaths } from '@/lib/pages';
+import { getPageByPath, getAllPagePaths, prisma } from '@/lib/pages';
+import { getPostPermalinkBase, buildPostUrl } from '@/lib/permalink';
 import ParentTemplate from '@/components/templates/ParentTemplate';
 import ChildTemplate from '@/components/templates/ChildTemplate';
 import AirlinesTemplate from '@/components/templates/AirlinesTemplate';
+import PostPageContent from '@/components/PostPageContent';
 import type { Metadata } from 'next';
 
 type Props = {
@@ -49,6 +51,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PageRoute({ params }: Props) {
     const { slug } = await params;
+
+    // Serve posts via catch-all when permalink base is not 'blog'
+    // (when it's 'blog', the dedicated app/blog/[slug] route handles posts)
+    const permalinkBase = await getPostPermalinkBase();
+    if (permalinkBase !== 'blog') {
+        let postSlug: string | null = null;
+        if (permalinkBase === '' && slug.length === 1) {
+            postSlug = slug[0];
+        } else if (permalinkBase !== '' && slug.length === 2 && slug[0] === permalinkBase) {
+            postSlug = slug[1];
+        }
+
+        if (postSlug) {
+            const post = await prisma.post.findUnique({
+                where:   { slug: postSlug },
+                include: {
+                    categories: { include: { category: { select: { name: true, slug: true } } } },
+                    tags:       { include: { tag:      { select: { name: true, slug: true } } } },
+                },
+            });
+            if (post && post.status === 'published') {
+                return <PostPageContent post={post} permalinkBase={permalinkBase} />;
+            }
+        }
+    }
+
     const page = await getPageByPath(slug);
 
     if (!page) notFound();

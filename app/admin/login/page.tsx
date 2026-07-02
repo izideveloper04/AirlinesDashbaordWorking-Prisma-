@@ -8,7 +8,7 @@ export default function LoginPage() {
     const params      = useSearchParams();
     const callbackUrl = params.get('callbackUrl') || '/admin/dashboard';
 
-    const [email,    setEmail]    = useState('');
+    const [login,    setLogin]    = useState('');
     const [password, setPassword] = useState('');
     const [showPwd,  setShowPwd]  = useState(false);
     const [error,    setError]    = useState('');
@@ -20,7 +20,7 @@ export default function LoginPage() {
         setLoading(true);
 
         const res = await signIn('credentials', {
-            email:    email.trim().toLowerCase(),
+            login:    login.trim(),
             password,
             redirect: false,
         });
@@ -28,7 +28,7 @@ export default function LoginPage() {
         setLoading(false);
 
         if (!res?.ok || res?.error) {
-            setError('Invalid email or password.');
+            setError('Invalid email / username or password.');
             return;
         }
 
@@ -61,14 +61,14 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit} style={styles.form}>
                     <div style={styles.field}>
-                        <label style={styles.label}>Email address</label>
+                        <label style={styles.label}>Email or Username</label>
                         <input
-                            type="email"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
+                            type="text"
+                            value={login}
+                            onChange={e => setLogin(e.target.value)}
                             required
                             autoFocus
-                            placeholder="you@example.com"
+                            placeholder="you@example.com or username"
                             style={styles.input}
                         />
                     </div>

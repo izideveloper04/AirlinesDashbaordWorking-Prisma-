@@ -1,5 +1,6 @@
 // app/admin/posts/page.tsx
 import { prisma } from '@/lib/pages';
+import { getPostPermalinkBase } from '@/lib/permalink';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import PostsClient from '@/components/admin/PostsClient';
@@ -22,7 +23,7 @@ export default async function AdminPostsPage({ searchParams }: Props) {
         ...(search ? { title: { contains: search } } : {}),
     };
 
-    const [posts, total, counts] = await Promise.all([
+    const [posts, total, counts, permalinkBase] = await Promise.all([
         prisma.post.findMany({
             where,
             orderBy: { updatedAt: 'desc' },
@@ -41,6 +42,7 @@ export default async function AdminPostsPage({ searchParams }: Props) {
             prisma.post.count({ where: { status: 'draft'     } }),
             prisma.post.count({ where: { status: 'trash'     } }),
         ]),
+        getPostPermalinkBase(),
     ]);
 
     const [allCount, publishedCount, draftCount, trashCount] = counts;
@@ -56,6 +58,7 @@ export default async function AdminPostsPage({ searchParams }: Props) {
             currentSearch={search}
             counts={{ all: allCount, published: publishedCount, draft: draftCount, trash: trashCount }}
             userRole={session?.user.role || 'editor'}
+            permalinkBase={permalinkBase}
         />
     );
 }

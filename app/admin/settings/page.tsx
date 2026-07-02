@@ -9,8 +9,15 @@ export default async function AdminSettingsPage() {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== 'admin') redirect('/admin/dashboard');
 
-    const setting    = await prisma.setting.findUnique({ where: { key: 'discourageSearchEngines' } });
-    const discourage = setting?.value === 'true';
+    const [discourageSetting, permalinkSetting] = await Promise.all([
+        prisma.setting.findUnique({ where: { key: 'discourageSearchEngines' } }),
+        prisma.setting.findUnique({ where: { key: 'postPermalinkBase' } }),
+    ]);
 
-    return <SettingsClient initialDiscourage={discourage} />;
+    return (
+        <SettingsClient
+            initialDiscourage={discourageSetting?.value === 'true'}
+            initialPermalinkBase={permalinkSetting?.value ?? 'blog'}
+        />
+    );
 }

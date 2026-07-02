@@ -1,55 +1,28 @@
-// app/blog/[slug]/page.tsx
-import { prisma } from '@/lib/pages';
-import { notFound, redirect } from 'next/navigation';
-import { getPostPermalinkBase, buildPostUrl } from '@/lib/permalink';
+// components/PostPageContent.tsx
 import Link from 'next/link';
-import type { Metadata } from 'next';
 import FaqSection from '@/components/FaqSection';
 
-type Props = { params: Promise<{ slug: string }> };
+type Post = {
+    id:              number;
+    title:           string;
+    slug:            string;
+    content:         string;
+    excerpt:         string;
+    featuredImage:   string | null;
+    featuredImageAlt:string | null;
+    faqSchema:       string | null;
+    createdAt:       Date;
+    updatedAt:       Date;
+    categories: { category: { name: string; slug: string } }[];
+    tags:       { tag:      { name: string; slug: string } }[];
+};
 
-export async function generateStaticParams() {
-    const posts = await prisma.post.findMany({
-        where:  { status: 'published' },
-        select: { slug: true },
-    });
-    return posts.map(p => ({ slug: p.slug }));
-}
+type Props = {
+    post:          Post;
+    permalinkBase: string;
+};
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const { slug } = await params;
-    const post = await prisma.post.findUnique({ where: { slug } });
-    if (!post) return {};
-    return {
-        title:       post.metaTitle       || post.title,
-        description: post.metaDescription || post.excerpt || '',
-        openGraph: {
-            title:       post.metaTitle || post.title,
-            description: post.metaDescription || post.excerpt || '',
-            images:      post.featuredImage ? [post.featuredImage] : [],
-        },
-    };
-}
-
-export default async function BlogPostPage({ params }: Props) {
-    const { slug } = await params;
-
-    // Redirect to the new permalink if the user changed away from 'blog'
-    const permalinkBase = await getPostPermalinkBase();
-    if (permalinkBase !== 'blog') {
-        redirect(buildPostUrl(slug, permalinkBase));
-    }
-
-    const post = await prisma.post.findUnique({
-        where:   { slug },
-        include: {
-            categories: { include: { category: { select: { name: true, slug: true } } } },
-            tags:       { include: { tag:      { select: { name: true, slug: true } } } },
-        },
-    });
-
-    if (!post || post.status !== 'published') notFound();
-
+export default function PostPageContent({ post, permalinkBase }: Props) {
     const faqs: { question: string; answer: string }[] = post.faqSchema
         ? JSON.parse(post.faqSchema)
         : [];
@@ -68,7 +41,6 @@ export default async function BlogPostPage({ params }: Props) {
                 </nav>
 
                 <article style={s.article}>
-                    {/* Header */}
                     <header style={s.header}>
                         {post.categories.length > 0 && (
                             <div style={s.catRow}>
@@ -92,7 +64,6 @@ export default async function BlogPostPage({ params }: Props) {
                         </div>
                     </header>
 
-                    {/* Featured image */}
                     {post.featuredImage && (
                         <img
                             src={post.featuredImage}
@@ -101,13 +72,11 @@ export default async function BlogPostPage({ params }: Props) {
                         />
                     )}
 
-                    {/* Content */}
                     <div
                         style={s.content}
                         dangerouslySetInnerHTML={{ __html: post.content }}
                     />
 
-                    {/* Tags */}
                     {post.tags.length > 0 && (
                         <div style={s.tagSection}>
                             <span style={s.tagLabel}>Tags:</span>
@@ -122,14 +91,12 @@ export default async function BlogPostPage({ params }: Props) {
                     )}
                 </article>
 
-                {/* FAQ Section */}
                 {faqs.length > 0 && (
                     <div style={{ marginTop: '40px' }}>
                         <FaqSection faqs={faqs} pageTitle={post.title} />
                     </div>
                 )}
 
-                {/* Back link */}
                 <div style={{ marginTop: '40px' }}>
                     <Link href="/blog" style={s.backLink}>← Back to Blog</Link>
                 </div>

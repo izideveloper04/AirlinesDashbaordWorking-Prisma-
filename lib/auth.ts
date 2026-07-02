@@ -44,15 +44,23 @@ export const authOptions: NextAuthOptions = {
         CredentialsProvider({
             name: 'credentials',
             credentials: {
-                email:    { label: 'Email',    type: 'email'    },
-                password: { label: 'Password', type: 'password' },
+                login:    { label: 'Email or Username', type: 'text'     },
+                password: { label: 'Password',          type: 'password' },
             },
 
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) return null;
+                if (!credentials?.login || !credentials?.password) return null;
 
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email.toLowerCase().trim() },
+                const identifier = credentials.login.trim();
+
+                // Match by email (case-insensitive) or by name (as stored)
+                const user = await prisma.user.findFirst({
+                    where: {
+                        OR: [
+                            { email: identifier.toLowerCase() },
+                            { name: identifier },
+                        ],
+                    },
                 });
 
                 // User not found

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { buildPostUrl } from '@/lib/permalink-utils';
 
 type Post = {
     id:         number;
@@ -24,6 +25,7 @@ type Props = {
     currentSearch: string;
     counts:        { all: number; published: number; draft: number; trash: number };
     userRole:      string;
+    permalinkBase: string;
 };
 
 const STATUS_TABS = [
@@ -41,7 +43,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 
 export default function PostsClient({
     posts, total, totalPages, currentPage,
-    currentStatus, currentSearch, counts, userRole,
+    currentStatus, currentSearch, counts, userRole, permalinkBase,
 }: Props) {
     const router  = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -196,7 +198,7 @@ export default function PostsClient({
                                             <Link href={`/admin/posts/${post.id}/edit`} style={s.titleLink}>
                                                 {post.title || '(no title)'}
                                             </Link>
-                                            <div style={s.postSlug}>/blog/{post.slug}</div>
+                                            <div style={s.postSlug}>{buildPostUrl(post.slug, permalinkBase)}</div>
                                             {isLocked && (
                                                 <div style={s.lockBadge}>🔒 Being edited by {post.lock!.user.name}</div>
                                             )}
@@ -221,9 +223,9 @@ export default function PostsClient({
                                             <Link href={`/admin/posts/${post.id}/edit`} style={s.actionBtn}>Edit</Link>
                                             <button onClick={() => duplicatePost(post.id)} style={s.actionBtn}>Copy</button>
                                             {post.status === 'published' ? (
-                                                <a href={`/blog/${post.slug}`} target="_blank" rel="noreferrer" style={s.actionBtn}>View</a>
+                                                <a href={buildPostUrl(post.slug, permalinkBase)} target="_blank" rel="noreferrer" style={s.actionBtn}>View</a>
                                             ) : (
-                                                <a href={`/blog/${post.slug}?preview=1`} target="_blank" rel="noreferrer" style={{ ...s.actionBtn, color: '#d97706' }}>👁 Preview</a>
+                                                <a href={`/post-preview/${post.id}`} target="_blank" rel="noreferrer" style={{ ...s.actionBtn, color: '#d97706' }}>👁 Preview</a>
                                             )}
                                             {post.status !== 'trash' ? (
                                                 <button onClick={() => quickAction(post.id, 'trash')} style={{ ...s.actionBtn, color: '#dc2626' }}>Trash</button>

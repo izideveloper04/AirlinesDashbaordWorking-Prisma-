@@ -28,6 +28,7 @@ type PageData = {
     title:              string;
     slug:               string;
     fullPath:           string;
+    content:            string;
     status:             string;
     template:           string;
     templateFile:       string;

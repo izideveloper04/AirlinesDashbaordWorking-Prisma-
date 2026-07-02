@@ -1,5 +1,6 @@
 // app/category/[slug]/page.tsx
 import { prisma } from '@/lib/pages';
+import { getPostPermalinkBase, buildPostUrl } from '@/lib/permalink';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -27,14 +28,17 @@ export default async function CategoryArchivePage({ params }: Props) {
     const category = await prisma.category.findUnique({ where: { slug } });
     if (!category) notFound();
 
-    const posts = await prisma.post.findMany({
-        where:   { status: 'published', categories: { some: { categoryId: category.id } } },
-        orderBy: { createdAt: 'desc' },
-        include: {
-            categories: { include: { category: { select: { name: true, slug: true } } } },
-            tags:       { include: { tag:      { select: { name: true, slug: true } } } },
-        },
-    });
+    const [posts, permalinkBase] = await Promise.all([
+        prisma.post.findMany({
+            where:   { status: 'published', categories: { some: { categoryId: category.id } } },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                categories: { include: { category: { select: { name: true, slug: true } } } },
+                tags:       { include: { tag:      { select: { name: true, slug: true } } } },
+            },
+        }),
+        getPostPermalinkBase(),
+    ]);
 
     return (
         <main style={s.main}>
@@ -64,13 +68,13 @@ export default async function CategoryArchivePage({ params }: Props) {
                         {posts.map(post => (
                             <article key={post.id} style={s.card}>
                                 {post.featuredImage && (
-                                    <Link href={`/blog/${post.slug}`}>
+                                    <Link href={buildPostUrl(post.slug, permalinkBase)}>
                                         <img src={post.featuredImage} alt={post.featuredImageAlt || post.title} style={s.cardImg} />
                                     </Link>
                                 )}
                                 <div style={s.cardBody}>
                                     <h2 style={s.cardTitle}>
-                                        <Link href={`/blog/${post.slug}`} style={s.cardTitleLink}>{post.title}</Link>
+                                        <Link href={buildPostUrl(post.slug, permalinkBase)} style={s.cardTitleLink}>{post.title}</Link>
                                     </h2>
                                     {(post.excerpt || post.content) && (
                                         <p style={s.cardExcerpt}>
@@ -81,7 +85,7 @@ export default async function CategoryArchivePage({ params }: Props) {
                                         <span style={s.cardDate}>
                                             {new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                                         </span>
-                                        <Link href={`/blog/${post.slug}`} style={s.readMore}>Read →</Link>
+                                        <Link href={buildPostUrl(post.slug, permalinkBase)} style={s.readMore}>Read →</Link>
                                     </div>
                                 </div>
                             </article>

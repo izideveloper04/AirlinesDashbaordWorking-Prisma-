@@ -1,5 +1,6 @@
 // app/blog/page.tsx
 import { prisma } from '@/lib/pages';
+import { getPostPermalinkBase, buildPostUrl } from '@/lib/permalink';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
@@ -9,14 +10,17 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
-    const posts = await prisma.post.findMany({
-        where:   { status: 'published' },
-        orderBy: { createdAt: 'desc' },
-        include: {
-            categories: { include: { category: { select: { name: true, slug: true } } } },
-            tags:       { include: { tag:      { select: { name: true, slug: true } } } },
-        },
-    });
+    const [posts, permalinkBase] = await Promise.all([
+        prisma.post.findMany({
+            where:   { status: 'published' },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                categories: { include: { category: { select: { name: true, slug: true } } } },
+                tags:       { include: { tag:      { select: { name: true, slug: true } } } },
+            },
+        }),
+        getPostPermalinkBase(),
+    ]);
 
     return (
         <main style={s.main}>
@@ -33,7 +37,7 @@ export default async function BlogPage() {
                         {posts.map(post => (
                             <article key={post.id} style={s.card}>
                                 {post.featuredImage && (
-                                    <Link href={`/blog/${post.slug}`} style={{ display: 'block' }}>
+                                    <Link href={buildPostUrl(post.slug, permalinkBase)} style={{ display: 'block' }}>
                                         <img
                                             src={post.featuredImage}
                                             alt={post.featuredImageAlt || post.title}
@@ -52,7 +56,7 @@ export default async function BlogPage() {
                                         </div>
                                     )}
                                     <h2 style={s.cardTitle}>
-                                        <Link href={`/blog/${post.slug}`} style={s.cardTitleLink}>
+                                        <Link href={buildPostUrl(post.slug, permalinkBase)} style={s.cardTitleLink}>
                                             {post.title}
                                         </Link>
                                     </h2>
@@ -75,7 +79,7 @@ export default async function BlogPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <Link href={`/blog/${post.slug}`} style={s.readMore}>Read more →</Link>
+                                    <Link href={buildPostUrl(post.slug, permalinkBase)} style={s.readMore}>Read more →</Link>
                                 </div>
                             </article>
                         ))}

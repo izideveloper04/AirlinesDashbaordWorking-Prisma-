@@ -1,5 +1,6 @@
 // app/admin/posts/[id]/edit/page.tsx
 import { prisma } from '@/lib/pages';
+import { getPostPermalinkBase } from '@/lib/permalink';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { notFound } from 'next/navigation';
@@ -23,10 +24,10 @@ export default async function EditPostPage({ params }: Props) {
 
     if (!post) notFound();
 
-    const allCategories = await prisma.category.findMany({
-        orderBy: { name: 'asc' },
-        select:  { id: true, name: true, slug: true },
-    });
+    const [allCategories, permalinkBase] = await Promise.all([
+        prisma.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, slug: true } }),
+        getPostPermalinkBase(),
+    ]);
 
     const now      = new Date();
     const lock     = post.lock;
@@ -55,6 +56,7 @@ export default async function EditPostPage({ params }: Props) {
             currentUserName={session!.user.name!}
             isLocked={!!isLocked}
             lockedBy={lockedBy}
+            permalinkBase={permalinkBase}
         />
     );
 }
