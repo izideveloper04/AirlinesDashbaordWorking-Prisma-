@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/pages';
 import { unlink } from 'fs/promises';
 import path from 'path';
+import { UPLOAD_DIR, UPLOAD_URL_PREFIX } from '@/lib/uploads';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -42,11 +43,13 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     const media = await prisma.media.findUnique({ where: { id: mediaId } });
     if (!media) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Delete from filesystem
-    try {
-        const filePath = path.join(process.cwd(), 'public', media.url);
-        await unlink(filePath);
-    } catch { /* file may already be missing */ }
+    // Delete from filesystem (only for locally-uploaded files)
+    if (media.url.startsWith(UPLOAD_URL_PREFIX)) {
+        try {
+            const filename = media.url.slice(UPLOAD_URL_PREFIX.length);
+            await unlink(path.join(UPLOAD_DIR, filename));
+        } catch { /* file may already be missing */ }
+    }
 
     await prisma.media.delete({ where: { id: mediaId } });
 
