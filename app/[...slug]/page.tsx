@@ -1,6 +1,6 @@
 // app/[...slug]/page.tsx
 import { notFound } from 'next/navigation';
-import { getPageByPath, getAllPagePaths, prisma } from '@/lib/pages';
+import { getPageByPath, prisma } from '@/lib/pages';
 import { getPostPermalinkBase, buildPostUrl } from '@/lib/permalink';
 import ParentTemplate from '@/components/templates/ParentTemplate';
 import ChildTemplate from '@/components/templates/ChildTemplate';
@@ -12,10 +12,9 @@ type Props = {
   params: Promise<{ slug: string[] }>;
 };
 
-export async function generateStaticParams() {
-  const paths = await getAllPagePaths();  // ← add await
-  return paths.filter(p => p.params.slug.join('/') !== '');
-}
+// Rendered on-demand against the live DB (no build-time pre-render) so
+// edits made in the CMS go live immediately without a redeploy.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;

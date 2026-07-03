@@ -8,13 +8,9 @@ import FaqSection from '@/components/FaqSection';
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateStaticParams() {
-    const posts = await prisma.post.findMany({
-        where:  { status: 'published' },
-        select: { slug: true },
-    });
-    return posts.map(p => ({ slug: p.slug }));
-}
+// Rendered on-demand against the live DB (no build-time pre-render) so
+// edits made in the CMS go live immediately without a redeploy.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;

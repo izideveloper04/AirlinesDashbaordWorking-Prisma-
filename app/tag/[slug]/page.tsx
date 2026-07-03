@@ -7,10 +7,9 @@ import type { Metadata } from 'next';
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateStaticParams() {
-    const tags = await prisma.tag.findMany({ select: { slug: true } });
-    return tags.map(t => ({ slug: t.slug }));
-}
+// Rendered on-demand against the live DB (no build-time pre-render) so
+// edits made in the CMS go live immediately without a redeploy.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
