@@ -1,9 +1,12 @@
 // app/admin/posts/new/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getPostPermalinkBase } from '@/lib/permalink';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import PostEditor from '@/components/admin/PostEditor';
+
+export const metadata: Metadata = { title: 'Add New Post' };
 
 export default async function NewPostPage() {
     const session = await getServerSession(authOptions);

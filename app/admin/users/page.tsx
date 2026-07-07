@@ -1,9 +1,12 @@
 // app/admin/users/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import UsersClient from '@/components/admin/UsersClient';
+
+export const metadata: Metadata = { title: 'Users' };
 
 export default async function AdminUsersPage() {
     const session = await getServerSession(authOptions);

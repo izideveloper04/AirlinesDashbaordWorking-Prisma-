@@ -1,4 +1,5 @@
 // app/admin/posts/[id]/edit/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getPostPermalinkBase } from '@/lib/permalink';
 import { getServerSession } from 'next-auth';
@@ -7,6 +8,12 @@ import { notFound } from 'next/navigation';
 import PostEditor from '@/components/admin/PostEditor';
 
 type Props = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+    const { id } = await params;
+    const post = await prisma.post.findUnique({ where: { id: parseInt(id) }, select: { title: true } });
+    return { title: post ? `Edit "${post.title}"` : 'Edit Post' };
+}
 
 export default async function EditPostPage({ params }: Props) {
     const session = await getServerSession(authOptions);

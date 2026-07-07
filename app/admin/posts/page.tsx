@@ -1,9 +1,12 @@
 // app/admin/posts/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getPostPermalinkBase } from '@/lib/permalink';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import PostsClient from '@/components/admin/PostsClient';
+
+export const metadata: Metadata = { title: 'Posts' };
 
 type Props = {
     searchParams: Promise<{ status?: string; search?: string; p?: string }>;

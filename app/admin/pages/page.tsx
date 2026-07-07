@@ -1,9 +1,12 @@
 // app/admin/pages/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
 import PagesClient from '@/components/admin/PagesClient';
+
+export const metadata: Metadata = { title: 'Pages' };
 
 type Props = {
     searchParams: Promise<{ status?: string; search?: string; p?: string }>;

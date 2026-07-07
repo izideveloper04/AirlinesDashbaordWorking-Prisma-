@@ -1,4 +1,5 @@
 // app/admin/pages/[id]/edit/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -6,6 +7,12 @@ import { notFound } from 'next/navigation';
 import PageEditor from '@/components/admin/PageEditor';
 
 type Props = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+    const { id } = await params;
+    const page = await prisma.page.findUnique({ where: { id: parseInt(id) }, select: { title: true } });
+    return { title: page ? `Edit "${page.title}"` : 'Edit Page' };
+}
 
 export default async function EditPagePage({ params }: Props) {
     const session = await getServerSession(authOptions);

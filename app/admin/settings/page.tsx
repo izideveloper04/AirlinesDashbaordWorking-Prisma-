@@ -1,9 +1,12 @@
 // app/admin/settings/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import SettingsClient from '@/components/admin/SettingsClient';
+
+export const metadata: Metadata = { title: 'Settings' };
 
 export default async function AdminSettingsPage() {
     const session = await getServerSession(authOptions);

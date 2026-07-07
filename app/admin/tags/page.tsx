@@ -1,8 +1,11 @@
 // app/admin/tags/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import TagsClient from '@/components/admin/TagsClient';
+
+export const metadata: Metadata = { title: 'Tags' };
 
 export default async function AdminTagsPage() {
     await getServerSession(authOptions);

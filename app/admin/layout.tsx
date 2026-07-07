@@ -5,6 +5,10 @@ import { authOptions } from '@/lib/auth';
 import AdminShell from '@/components/admin/AdminShell';
 
 export const metadata: Metadata = {
+    title: {
+        template: '%s | Admin | Airlines Office Map',
+        default:  'Admin | Airlines Office Map',
+    },
     robots: {
         index:  false,
         follow: false,

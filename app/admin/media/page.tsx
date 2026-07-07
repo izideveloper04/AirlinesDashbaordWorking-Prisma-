@@ -1,8 +1,11 @@
 // app/admin/media/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import MediaClient from '@/components/admin/MediaClient';
+
+export const metadata: Metadata = { title: 'Media Library' };
 
 const PER_PAGE = 24;
 

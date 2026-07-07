@@ -1,8 +1,11 @@
 // app/admin/pages/new/page.tsx
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/pages';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import PageEditor from '@/components/admin/PageEditor';
+
+export const metadata: Metadata = { title: 'Add New Page' };
 
 export default async function NewPagePage() {
     const session  = await getServerSession(authOptions);
