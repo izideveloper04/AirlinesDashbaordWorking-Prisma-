@@ -7,11 +7,6 @@ type Props = { page: WPPage };
 
 export default async function AirlinesTemplate({ page }: Props) {
   const children = await getAllParentPages();
-  
-  // TEMP DEBUG — remove after fixing
-  console.log('Airlines count:', children.length);
-  console.log('Sample:', JSON.stringify(children.slice(0, 2)));
-
   const content = cleanWordPressContent(page.content);
 
   // Group by first letter (already sorted A→Z from getAllParentPages)
@@ -26,11 +21,6 @@ export default async function AirlinesTemplate({ page }: Props) {
 
   return (
     <main className="airlines-page">
-
-    {/* TEMP DEBUG */}
-        <div style={{ background: 'red', color: 'white', padding: '10px', fontSize: '14px' }}>
-            DEBUG: Found {children.length} airlines
-        </div>
 
       {/* Hero banner */}
       <div className="airlines-hero">

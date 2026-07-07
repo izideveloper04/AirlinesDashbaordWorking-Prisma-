@@ -35,6 +35,7 @@ export default async function ParentTemplate({ page }: Props) {
         </nav>
 
         <h1 className="parent-title">{page.title}</h1>
+        <div className="gold-rule" style={{ marginBottom: '18px' }} />
         {page.metaDescription&& (
           <p className="parent-subtitle">{page.metaDescription}</p>
         )}
@@ -69,7 +70,11 @@ export default async function ParentTemplate({ page }: Props) {
                     />
                   </div>
                 ) : (
-                  <div className="child-card-image-placeholder">✈</div>
+                  <div className="child-card-image-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M10.5 3.5 12 2l1.5 1.5v5.6l6.7 3.9v2.2l-6.7-2.2v4.4l2.2 1.6v1.8L12 19l-3.7 1.2v-1.8l2.2-1.6v-4.4L3.8 15V12.8l6.7-3.9V3.5Z" fill="currentColor" />
+                    </svg>
+                  </div>
                 )}
                 <div className="child-card-body">
                   <h3>{child.title}</h3>

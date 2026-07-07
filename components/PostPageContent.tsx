@@ -22,42 +22,42 @@ type Props = {
     permalinkBase: string;
 };
 
-export default function PostPageContent({ post, permalinkBase }: Props) {
+export default function PostPageContent({ post }: Props) {
     const faqs: { question: string; answer: string }[] = post.faqSchema
         ? JSON.parse(post.faqSchema)
         : [];
 
     return (
-        <main style={s.main}>
-            <div style={s.container}>
+        <main className="blog-page">
+            <div className="blog-container" style={{ maxWidth: '820px' }}>
 
                 {/* Breadcrumb */}
-                <nav style={s.breadcrumb}>
-                    <Link href="/" style={s.breadLink}>Home</Link>
-                    <span style={s.breadSep}>›</span>
-                    <Link href="/blog" style={s.breadLink}>Blog</Link>
-                    <span style={s.breadSep}>›</span>
-                    <span style={s.breadCurrent}>{post.title}</span>
+                <nav className="breadcrumb" aria-label="Breadcrumb">
+                    <Link href="/">Home</Link>
+                    <span className="sep">›</span>
+                    <Link href="/blog">Blog</Link>
+                    <span className="sep">›</span>
+                    <span className="current">{post.title}</span>
                 </nav>
 
-                <article style={s.article}>
-                    <header style={s.header}>
+                <article className="post-article">
+                    <header className="post-header">
                         {post.categories.length > 0 && (
-                            <div style={s.catRow}>
+                            <div className="blog-chip-row" style={{ marginBottom: '12px' }}>
                                 {post.categories.map(({ category: cat }) => (
-                                    <Link key={cat.slug} href={`/category/${cat.slug}`} style={s.catChip}>
+                                    <Link key={cat.slug} href={`/category/${cat.slug}`} className="blog-chip">
                                         {cat.name}
                                     </Link>
                                 ))}
                             </div>
                         )}
-                        <h1 style={s.title}>{post.title}</h1>
-                        <div style={s.meta}>
-                            <time style={s.date}>
+                        <h1 className="post-title">{post.title}</h1>
+                        <div className="post-meta">
+                            <time>
                                 {new Date(post.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                             </time>
                             {post.updatedAt > post.createdAt && (
-                                <span style={s.updated}>
+                                <span>
                                     · Updated {new Date(post.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </span>
                             )}
@@ -68,21 +68,21 @@ export default function PostPageContent({ post, permalinkBase }: Props) {
                         <img
                             src={post.featuredImage}
                             alt={post.featuredImageAlt || post.title}
-                            style={s.featImg}
+                            className="post-featured-img"
                         />
                     )}
 
                     <div
-                        style={s.content}
+                        className="post-content wp-content"
                         dangerouslySetInnerHTML={{ __html: post.content }}
                     />
 
                     {post.tags.length > 0 && (
-                        <div style={s.tagSection}>
-                            <span style={s.tagLabel}>Tags:</span>
-                            <div style={s.tagRow}>
+                        <div className="post-tag-section">
+                            <span className="post-tag-label">Tags:</span>
+                            <div className="blog-chip-row">
                                 {post.tags.map(({ tag }) => (
-                                    <Link key={tag.slug} href={`/tag/${tag.slug}`} style={s.tagChip}>
+                                    <Link key={tag.slug} href={`/tag/${tag.slug}`} className="blog-chip tag">
                                         #{tag.name}
                                     </Link>
                                 ))}
@@ -97,35 +97,9 @@ export default function PostPageContent({ post, permalinkBase }: Props) {
                     </div>
                 )}
 
-                <div style={{ marginTop: '40px' }}>
-                    <Link href="/blog" style={s.backLink}>← Back to Blog</Link>
-                </div>
+                <Link href="/blog" className="blog-back-link">← Back to Blog</Link>
 
             </div>
         </main>
     );
 }
-
-const s: Record<string, React.CSSProperties> = {
-    main:        { background: '#F8FAFC', minHeight: '100vh' },
-    container:   { maxWidth: '780px', margin: '0 auto', padding: '40px 24px 64px' },
-    breadcrumb:  { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '32px', flexWrap: 'wrap' },
-    breadLink:   { color: '#7A909E', fontSize: '13px', textDecoration: 'none' },
-    breadSep:    { color: '#C4D0DB', fontSize: '13px' },
-    breadCurrent:{ color: '#1A2B3C', fontSize: '13px', fontWeight: 600 },
-    article:     { background: '#fff', border: '1px solid #E2EAF0', borderRadius: '14px', overflow: 'hidden' },
-    header:      { padding: '32px 36px 24px', borderBottom: '1px solid #E2EAF0' },
-    catRow:      { display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' },
-    catChip:     { background: '#E8F4FD', color: '#1B6CA8', borderRadius: '99px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.05em' },
-    title:       { fontSize: '30px', fontWeight: 800, color: '#0A1628', lineHeight: 1.3, margin: '0 0 12px' },
-    meta:        { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' },
-    date:        { fontSize: '13px', color: '#7A909E' },
-    updated:     { fontSize: '13px', color: '#7A909E' },
-    featImg:     { width: '100%', maxHeight: '420px', objectFit: 'cover', display: 'block' },
-    content:     { padding: '32px 36px', fontSize: '16px', lineHeight: 1.75, color: '#1A2B3C', overflowWrap: 'break-word' },
-    tagSection:  { display: 'flex', alignItems: 'center', gap: '10px', padding: '20px 36px', borderTop: '1px solid #E2EAF0', flexWrap: 'wrap' },
-    tagLabel:    { fontSize: '13px', fontWeight: 700, color: '#4A6070' },
-    tagRow:      { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-    tagChip:     { color: '#1B6CA8', fontSize: '13px', textDecoration: 'none', background: '#F0F7FF', padding: '3px 10px', borderRadius: '99px', fontWeight: 500 },
-    backLink:    { color: '#1B6CA8', fontWeight: 600, fontSize: '14px', textDecoration: 'none' },
-};

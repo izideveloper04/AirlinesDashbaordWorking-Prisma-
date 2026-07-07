@@ -56,6 +56,7 @@ export default async function ChildTemplate({ page }: Props) {
           )}
 
           <h1 className="child-title">{page.title}</h1>
+          <div className="gold-rule" />
 
           {content && (
             <div
